@@ -243,9 +243,18 @@
         <div class="select-wrap">
           <label class="field-label">混淆算法</label>
           <select id="algorithm">
-            <option value="tomato">小番茄算法</option>
-            <option value="default">默认混淆算法</option>
-            <option value="ybzj">Ybzj算法</option>
+            <optgroup label="常用">
+              <option value="tomato">小番茄算法</option>
+              <option value="default">默认混淆算法</option>
+              <option value="ybzj">Ybzj算法</option>
+            </optgroup>
+            <optgroup label="PicEncrypt">
+              <option value="pic_row">PicEncrypt 行模式</option>
+              <option value="pic_rowcol">PicEncrypt 行+列模式</option>
+              <option value="pic_block">PicEncrypt 块混淆</option>
+              <option value="pic_line">PicEncrypt 行像素混淆</option>
+              <option value="pic_pixel">PicEncrypt 逐像素混淆</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -314,6 +323,11 @@
 
     <div class="info-bar" id="infoBar" style="display:none">
       <span id="infoText"></span>
+    </div>
+    <div class="info-bar" id="tomatoTips" style="display:none; border-color: #4a3a2e; background: #1f1a14;">
+      <strong style="color:#e9c46a">小番茄提示：</strong>
+      反混淆宽高必须与混淆时一致；JPG 压缩或缩放会导致噪点/色差。
+      密钥默认 <strong>0</strong>（黄金比例）。下载请用 PNG。
     </div>
   </div>
 
@@ -480,6 +494,37 @@
     return result;
   }
 
+  const BLOCK_SIZE = 32;
+
+  function parseLogisticKey(key) {
+    const k = parseFloat(String(key ?? '').trim());
+    if (!isNaN(k) && k > 0 && k < 1) return k;
+    return 0.666;
+  }
+
+  function padToBlock32(imageData, block = BLOCK_SIZE) {
+    const { width, height, data } = imageData;
+    const nw = width + (block - width % block) % block;
+    const nh = height + (block - height % block) % block;
+    if (nw === width && nh === height) return imageData;
+    const out = new Uint8ClampedArray(nw * nh * 4);
+    for (let y = 0; y < nh; y++) {
+      for (let x = 0; x < nw; x++) {
+        const di = (y * nw + x) * 4;
+        if (x < width && y < height) {
+          const si = (y * width + x) * 4;
+          out[di] = data[si];
+          out[di + 1] = data[si + 1];
+          out[di + 2] = data[si + 2];
+          out[di + 3] = data[si + 3];
+        } else {
+          out[di] = 0; out[di + 1] = 0; out[di + 2] = 0; out[di + 3] = 255;
+        }
+      }
+    }
+    return new ImageData(out, nw, nh);
+  }
+
   function transformPixels(data, width, height, core, encrypt) {
     const result = new Uint8ClampedArray(data.length);
     for (let j = 0; j < height; j++) {
@@ -492,6 +537,45 @@
         result[d + 2] = data[s + 2];
         result[d + 3] = data[s + 3];
       }
+    }
+    return result;
+  }
+
+  /** 小番茄偏移量：有密钥时用 key/1.618，留空时用黄金比例（兼容官网工具） */
+  function tomatoOffset(pixelCount, key) {
+    const trimmed = String(key ?? '').trim();
+    if (trimmed !== '') {
+      const k = parseFloat(trimmed);
+      if (!isNaN(k) && k > 0) {
+        return Math.round(pixelCount * k / 1.618) % pixelCount;
+      }
+      // 密钥为 0 或无效时回退黄金比例
+    }
+    return Math.round(pixelCount * (Math.sqrt(5) - 1) / 2);
+  }
+
+  /** 小番茄标准实现：按 Gilbert 曲线序号遍历（与 xiaofanqie / PicEncrypt 一致） */
+  function tomatoTransform(data, width, height, key, encrypt) {
+    const pixelCount = width * height;
+    const curve = gilbert2d(width, height);
+    const offset = tomatoOffset(pixelCount, key);
+    const result = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < pixelCount; i++) {
+      const [oldX, oldY] = curve[i];
+      const newIdx = (i + offset) % pixelCount;
+      const [newX, newY] = curve[newIdx];
+      let srcIdx, dstIdx;
+      if (encrypt) {
+        srcIdx = 4 * (oldX + oldY * width);
+        dstIdx = 4 * (newX + newY * width);
+      } else {
+        dstIdx = 4 * (oldX + oldY * width);
+        srcIdx = 4 * (newX + newY * width);
+      }
+      result[dstIdx] = data[srcIdx];
+      result[dstIdx + 1] = data[srcIdx + 1];
+      result[dstIdx + 2] = data[srcIdx + 2];
+      result[dstIdx + 3] = data[srcIdx + 3];
     }
     return result;
   }
@@ -514,31 +598,92 @@
     },
     tomato: {
       name: '小番茄算法',
-      needsKey: false, defaultKey: '', keyHint: '无需密钥',
-      transform(data, width, height, _key, encrypt) {
-        const size = width * height;
-        const offset = Math.round(size * (Math.sqrt(5) - 1) / 2);
-        const curve = gilbert2d(width, height);
-        return transformPixels(data, width, height, (i, j) => {
-          const a = i + j * width;
-          const b = (a + offset) % size;
-          const [c, d] = curve[a];
-          const [e, f] = curve[b];
-          return [e + f * width, c + d * width];
-        }, encrypt);
-      }
+      needsKey: true, defaultKey: '0', keyHint: '0 ~ 1.618，0 或留空用黄金比例',
+      transform: tomatoTransform
     },
     ybzj: {
       name: 'Ybzj算法',
       needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
       transform(data, width, height, key, encrypt) {
-        const k = parseFloat(key) || 0.666;
+        const k = parseLogisticKey(key);
         const col = logistic(k, height, width);
         const row = logistic(k, width, height);
         return transformPixels(data, width, height, (i, j) => {
           const n = row[i][j];
           const m = col[n][i];
           return [i + j * width, m + n * width];
+        }, encrypt);
+      }
+    },
+    pic_row: {
+      name: 'PicEncrypt 行模式',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseLogisticKey(key);
+        const address = logistic(k, 1, width)[0];
+        return transformPixels(data, width, height, (i, j) => {
+          const m = address[i];
+          return [i + j * width, m + j * width];
+        }, encrypt);
+      }
+    },
+    pic_rowcol: {
+      name: 'PicEncrypt 行+列模式',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseLogisticKey(key);
+        const col = logistic(k, height, width);
+        const row = logistic(k, width, height);
+        return transformPixels(data, width, height, (i, j) => {
+          const n = row[i][j];
+          const m = col[n][i];
+          return [i + j * width, m + n * width];
+        }, encrypt);
+      }
+    },
+    pic_block: {
+      name: 'PicEncrypt 块混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      needsBlockPad: true,
+      transform(data, width, height, key, encrypt) {
+        const sx = BLOCK_SIZE, sy = BLOCK_SIZE;
+        const x = amess(sx, key);
+        const y = amess(sy, key);
+        const ssx = width / sx;
+        const ssy = height / sy;
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[((j / ssy) | 0) % sx] * ssx + i) % width;
+          const b = x[(a / ssx) | 0] * ssx + a % ssx;
+          const c = (y[((b / ssx) | 0) % sy] * ssy + j) % height;
+          const d = y[(c / ssy) | 0] * ssy + c % ssy;
+          return [i + j * width, b + d * width];
+        }, encrypt);
+      }
+    },
+    pic_line: {
+      name: 'PicEncrypt 行像素混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          return [i + j * width, b + j * width];
+        }, encrypt);
+      }
+    },
+    pic_pixel: {
+      name: 'PicEncrypt 逐像素混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        const y = amess(height, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          const c = (y[b % height] + j) % height;
+          const d = y[c];
+          return [i + j * width, b + d * width];
         }, encrypt);
       }
     }
@@ -592,6 +737,7 @@
 
   function updateKeyUI() {
     const algo = Algorithms[algorithmSelect.value];
+    $('tomatoTips').style.display = algorithmSelect.value === 'tomato' ? 'block' : 'none';
     const keyRow = $('keyRow');
     if (algo.needsKey) {
       keyRow.style.display = '';
@@ -748,7 +894,15 @@
     await new Promise(r => setTimeout(r, 20));
 
     try {
-      const { data, width, height } = state.workImageData;
+      let imageData = state.workImageData;
+      if (algo.needsBlockPad) {
+        const padded = padToBlock32(imageData);
+        if (padded.width !== imageData.width || padded.height !== imageData.height) {
+          showToast(`块混淆：已填充至 ${padded.width}×${padded.height}`);
+        }
+        imageData = padded;
+      }
+      const { data, width, height } = imageData;
       const result = algo.transform(data, width, height, key, encrypt);
       state.workImageData = new ImageData(result, width, height);
       syncWorkCanvas(state.workImageData);
