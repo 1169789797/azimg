@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>图片混淆工具</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #252540;
+      --border: #2e2e4a;
+      --primary: #e94560;
+      --accent: #ff6b8a;
+      --text: #eeeef5;
+      --text-dim: #8888aa;
+      --success: #4ecdc4;
+      --radius: 14px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: calc(24px + var(--safe-bottom));
+    }
+
+    .header {
+      padding: 16px 20px 10px;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 700; }
+    .header p { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+    .controls {
+      padding: 0 16px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .control-row { display: flex; gap: 8px; }
+    .select-wrap, .input-wrap { flex: 1; position: relative; }
+
+    label.field-label {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      padding-left: 2px;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.875rem;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    select:focus, input[type="text"]:focus { border-color: var(--primary); }
+
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      color: var(--text-dim);
+      pointer-events: none;
+      font-size: 0.75rem;
+    }
+
+    .upload-zone {
+      margin: 0 16px 10px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(233, 69, 96, 0.05);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .upload-text { font-size: 0.85rem; color: var(--text-dim); }
+    .upload-hint { font-size: 0.7rem; color: var(--text-dim); margin-top: 3px; opacity: 0.7; }
+
+    /* 操作按钮区 */
+    .action-bar {
+      margin: 0 16px 12px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .action-bar .btn-row2 {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 11px 8px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-encrypt { background: var(--primary); color: #fff; }
+    .btn-decrypt { background: var(--success); color: #0f0f1a; }
+    .btn-restore { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
+    .btn-download { background: #3d5a80; color: #fff; font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
+
+    /* 双预览 */
+    .preview-section {
+      padding: 0 16px;
+    }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .preview-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .preview-header {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .preview-header .dim { color: var(--text-dim); font-size: 0.65rem; }
+    .canvas-wrap {
+      background: repeating-conic-gradient(#1e1e30 0% 25%, #181828 0% 50%) 0 0 / 12px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      min-height: 120px;
+    }
+    canvas.preview-canvas {
+      display: block;
+      border-radius: 4px;
+      image-rendering: auto;
+    }
+    .canvas-placeholder {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      text-align: center;
+      padding: 20px 8px;
+      line-height: 1.5;
+    }
+
+    .info-bar {
+      margin: 10px 16px 0;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .info-bar strong { color: var(--text); }
+
+    .loading {
+      position: fixed; inset: 0;
+      background: rgba(15,15,26,0.85);
+      z-index: 200;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .loading.show { opacity: 1; pointer-events: auto; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; top: 16px; left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 9px 18px; border-radius: 10px; font-size: 0.8rem;
+      z-index: 300; transition: transform 0.3s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      max-width: 90%; text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (min-width: 480px) {
+      .controls { flex-direction: row; flex-wrap: wrap; }
+      .control-row { flex: 1; min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>图片混淆工具</h1>
+      <p>纯前端处理，图片不会上传到服务器</p>
+    </header>
+
+    <div class="controls">
+      <div class="control-row">
+        <div class="select-wrap">
+          <label class="field-label">混淆算法</label>
+          <select id="algorithm">
+            <option value="tomato">小番茄算法</option>
+            <option value="default">默认混淆算法</option>
+            <option value="ybzj">Ybzj算法</option>
+          </select>
+        </div>
+      </div>
+      <div class="control-row" id="keyRow">
+        <div class="input-wrap">
+          <label class="field-label" id="keyLabel">密钥</label>
+          <input type="text" id="keyInput" placeholder="输入密钥">
+        </div>
+      </div>
+      <div class="control-row">
+        <div class="select-wrap">
+          <label class="field-label">预览尺寸</label>
+          <select id="previewSize">
+            <option value="150">150 × 150</option>
+            <option value="200">200 × 200</option>
+            <option value="250">250 × 250</option>
+            <option value="300" selected>300 × 300</option>
+            <option value="400">400 × 400</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-text">点击或拖拽上传图片</div>
+      <div class="upload-hint">支持 JPG / PNG / WebP，也可粘贴图片</div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="btn btn-encrypt" id="btnEncrypt" disabled>🔒 混淆</button>
+      <button class="btn btn-decrypt" id="btnDecrypt" disabled>🔓 反混淆</button>
+      <button class="btn btn-restore" id="btnRestore" disabled>↩️ 还原</button>
+      <div class="btn-row2">
+        <button class="btn btn-secondary" id="btnRerender" disabled>🔄 重新渲染</button>
+        <button class="btn btn-download" id="btnDownload" disabled>⬇️ 下载结果</button>
+      </div>
+    </div>
+
+    <section class="preview-section">
+      <div class="preview-grid">
+        <div class="preview-card">
+          <div class="preview-header">
+            <span>原图</span>
+            <span class="dim" id="originSize">—</span>
+          </div>
+          <div class="canvas-wrap">
+            <canvas class="preview-canvas" id="originCanvas" style="display:none"></canvas>
+            <div class="canvas-placeholder" id="originPlaceholder">上传后显示</div>
+          </div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-header">
+            <span>结果图</span>
+            <span class="dim" id="resultSize">—</span>
+          </div>
+          <div class="canvas-wrap">
+            <canvas class="preview-canvas" id="resultCanvas" style="display:none"></canvas>
+            <div class="canvas-placeholder" id="resultPlaceholder">点击混淆或反混淆</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="info-bar" id="infoBar" style="display:none">
+      <span id="infoText"></span>
+    </div>
+  </div>
+
+  <!-- 隐藏的全分辨率工作画布 -->
+  <canvas id="workCanvas" style="display:none"></canvas>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">处理中...</div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+  // ==================== 算法核心 ====================
+
+  const md5 = (function () {
+    function rotateLeft(lValue, iShiftBits) {
+      return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+    }
+    function addUnsigned(lX, lY) {
+      const lX4 = lX & 0x40000000, lY4 = lY & 0x40000000;
+      const lX8 = lX & 0x80000000, lY8 = lY & 0x80000000;
+      const lResult = (lX & 0x3fffffff) + (lY & 0x3fffffff);
+      if (lX4 & lY4) return lResult ^ 0x80000000 ^ lX8 ^ lY8;
+      if (lX4 | lY4) {
+        return lResult & 0x40000000 ? lResult ^ 0xc0000000 ^ lX8 ^ lY8 : lResult ^ 0x40000000 ^ lX8 ^ lY8;
+      }
+      return lResult ^ lX8 ^ lY8;
+    }
+    const F = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned((b & c) | (~b & d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const G = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned((b & d) | (c & ~d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const H = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned(b ^ c ^ d, x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const I = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned(c ^ (b | ~d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    return function (str) {
+      const x = (() => {
+        const lWordCount = Math.floor((str.length + 64) / 64);
+        const lMessage = new Array(lWordCount * 16).fill(0);
+        for (let i = 0; i < str.length; i++) {
+          lMessage[i >> 2] |= (str.charCodeAt(i) & 0xff) << ((i % 4) * 8);
+        }
+        lMessage[str.length >> 2] |= 0x80 << ((str.length % 4) * 8);
+        lMessage[lWordCount * 16 - 2] = str.length * 8;
+        return lMessage;
+      })();
+      let a = 0x67452301, b = 0xefcdab89, c = 0x98badcfe, d = 0x10325476;
+      for (let k = 0; k < x.length; k += 16) {
+        const AA = a, BB = b, CC = c, DD = d;
+        a = F(a,b,c,d,x[k+0],7,0xd76aa478); d = F(d,a,b,c,x[k+1],12,0xe8c7b756);
+        c = F(c,d,a,b,x[k+2],17,0x242070db); b = F(b,c,d,a,x[k+3],22,0xc1bdceee);
+        a = F(a,b,c,d,x[k+4],7,0xf57c0faf); d = F(d,a,b,c,x[k+5],12,0x4787c62a);
+        c = F(c,d,a,b,x[k+6],17,0xa8304613); b = F(b,c,d,a,x[k+7],22,0xfd469501);
+        a = F(a,b,c,d,x[k+8],7,0x698098d8); d = F(d,a,b,c,x[k+9],12,0x8b44f7af);
+        c = F(c,d,a,b,x[k+10],17,0xffff5bb1); b = F(b,c,d,a,x[k+11],22,0x895cd7be);
+        a = F(a,b,c,d,x[k+12],7,0x6b901122); d = F(d,a,b,c,x[k+13],12,0xfd987193);
+        c = F(c,d,a,b,x[k+14],17,0xa679438e); b = F(b,c,d,a,x[k+15],22,0x49b40821);
+        a = G(a,b,c,d,x[k+1],5,0xf61e2562); d = G(d,a,b,c,x[k+6],9,0xc040b340);
+        c = G(c,d,a,b,x[k+11],14,0x265e5a51); b = G(b,c,d,a,x[k+0],20,0xe9b6c7aa);
+        a = G(a,b,c,d,x[k+5],5,0xd62f105d); d = G(d,a,b,c,x[k+10],9,0x02441453);
+        c = G(c,d,a,b,x[k+15],14,0xd8a1e681); b = G(b,c,d,a,x[k+4],20,0xe7d3fbc8);
+        a = G(a,b,c,d,x[k+9],5,0x21e1cde6); d = G(d,a,b,c,x[k+14],9,0xc33707d6);
+        c = G(c,d,a,b,x[k+3],14,0xf4d50d87); b = G(b,c,d,a,x[k+8],20,0x455a14ed);
+        a = G(a,b,c,d,x[k+13],5,0xa9e3e905); d = G(d,a,b,c,x[k+2],9,0xfcefa3f8);
+        c = G(c,d,a,b,x[k+7],14,0x676f02d9); b = G(b,c,d,a,x[k+12],20,0x8d2a4c8a);
+        a = H(a,b,c,d,x[k+5],4,0xfffa3942); d = H(d,a,b,c,x[k+8],11,0x8771f681);
+        c = H(c,d,a,b,x[k+11],16,0x6d9d6122); b = H(b,c,d,a,x[k+14],23,0xfde5380c);
+        a = H(a,b,c,d,x[k+1],4,0xa4beea44); d = H(d,a,b,c,x[k+4],11,0x4bdecfa9);
+        c = H(c,d,a,b,x[k+7],16,0xf6bb4b60); b = H(b,c,d,a,x[k+10],23,0xbebfbc70);
+        a = H(a,b,c,d,x[k+13],4,0x289b7ec6); d = H(d,a,b,c,x[k+0],11,0xeaa127fa);
+        c = H(c,d,a,b,x[k+3],16,0xd4ef3085); b = H(b,c,d,a,x[k+6],23,0x04881d05);
+        a = H(a,b,c,d,x[k+9],4,0xd9d4d039); d = H(d,a,b,c,x[k+12],11,0xe6db99e5);
+        c = H(c,d,a,b,x[k+15],16,0x1fa27cf8); b = H(b,c,d,a,x[k+2],23,0xc4ac5665);
+        a = I(a,b,c,d,x[k+0],6,0xf4292244); d = I(d,a,b,c,x[k+7],10,0x432aff97);
+        c = I(c,d,a,b,x[k+14],15,0xab9423a7); b = I(b,c,d,a,x[k+5],21,0xfc93a039);
+        a = I(a,b,c,d,x[k+12],6,0x655b59c3); d = I(d,a,b,c,x[k+3],10,0x8f0ccc92);
+        c = I(c,d,a,b,x[k+10],15,0xffeff47d); b = I(b,c,d,a,x[k+1],21,0x85845dd1);
+        a = I(a,b,c,d,x[k+8],6,0x6fa87e4f); d = I(d,a,b,c,x[k+15],10,0xfe2ce6e0);
+        c = I(c,d,a,b,x[k+6],15,0xa3014314); b = I(b,c,d,a,x[k+13],21,0x4e0811a1);
+        a = I(a,b,c,d,x[k+4],6,0xf7537e82); d = I(d,a,b,c,x[k+11],10,0xbd3af235);
+        c = I(c,d,a,b,x[k+2],15,0x2ad7d2bb); b = I(b,c,d,a,x[k+9],21,0xeb86d391);
+        a = addUnsigned(a, AA); b = addUnsigned(b, BB);
+        c = addUnsigned(c, CC); d = addUnsigned(d, DD);
+      }
+      return [a, b, c, d].flatMap(v =>
+        [0, 1, 2, 3].map(i => ((v >>> (i * 8)) & 0xff).toString(16).padStart(2, '0'))
+      ).join('');
+    };
+  })();
+
+  function amess(length, key) {
+    return Array.from({ length }, (_, i) => i)
+      .map(i => `${key}${i}`)
+      .map(s => md5(s))
+      .map(h => h.substr(0, 7))
+      .map(h => parseInt(h, 16))
+      .map((v, i) => v % (i + 1))
+      .map((v, i) => [v, i])
+      .reduce((arr, [v, i]) => ([arr[v], arr[i]] = [arr[i], arr[v]], arr),
+        Array.from({ length }, (_, i) => i));
+  }
+
+  function logistic(key, height, width) {
+    const perms = Array(height);
+    let x = key;
+    for (let i = 0; i < height; i++) {
+      const vals = Array(width);
+      vals[0] = [x, 0];
+      for (let j = 1; j < width; j++) {
+        x = 3.9999999 * x * (1 - x);
+        vals[j] = [x, j];
+      }
+      perms[i] = vals.sort((a, b) => a[0] - b[0]).map(p => p[1]);
+    }
+    return perms;
+  }
+
+  function gilbert2d(width, height) {
+    const result = [];
+    const stack = [];
+    if (width >= height) {
+      stack.push({ x: 0, y: 0, ax: width, ay: 0, bx: 0, by: height });
+    } else {
+      stack.push({ x: 0, y: 0, ax: 0, ay: height, bx: width, by: 0 });
+    }
+    while (stack.length > 0) {
+      const { x, y, ax, ay, bx, by } = stack.pop();
+      const w = Math.abs(ax + ay), h = Math.abs(bx + by);
+      const [dax, day] = [Math.sign(ax), Math.sign(ay)];
+      const [dbx, dby] = [Math.sign(bx), Math.sign(by)];
+      if (h === 1) {
+        let px = x, py = y;
+        for (let i = 0; i < w; i++) { result.push([px, py]); px += dax; py += day; }
+        continue;
+      }
+      if (w === 1) {
+        let px = x, py = y;
+        for (let i = 0; i < h; i++) { result.push([px, py]); px += dbx; py += dby; }
+        continue;
+      }
+      let ax2 = Math.floor(ax / 2), ay2 = Math.floor(ay / 2);
+      let bx2 = Math.floor(bx / 2), by2 = Math.floor(by / 2);
+      if (2 * w > 3 * h) {
+        if (Math.abs(ax2 + ay2) % 2 && w > 2) { ax2 += dax; ay2 += day; }
+        stack.push({ x: x + ax2, y: y + ay2, ax: ax - ax2, ay: ay - ay2, bx, by });
+        stack.push({ x, y, ax: ax2, ay: ay2, bx, by });
+      } else {
+        if (Math.abs(bx2 + by2) % 2 && h > 2) { bx2 += dbx; by2 += dby; }
+        stack.push({ x: x + (ax - dax) + (bx2 - dbx), y: y + (ay - day) + (by2 - dby), ax: -bx2, ay: -by2, bx: -(ax - ax2), by: -(ay - ay2) });
+        stack.push({ x: x + bx2, y: y + by2, ax, ay, bx: bx - bx2, by: by - by2 });
+        stack.push({ x, y, ax: bx2, ay: by2, bx: ax2, by: ay2 });
+      }
+    }
+    return result;
+  }
+
+  function transformPixels(data, width, height, core, encrypt) {
+    const result = new Uint8ClampedArray(data.length);
+    for (let j = 0; j < height; j++) {
+      for (let i = 0; i < width; i++) {
+        let [src, dst] = core(i, j);
+        if (!encrypt) [src, dst] = [dst, src];
+        const s = src * 4, d = dst * 4;
+        result[d] = data[s];
+        result[d + 1] = data[s + 1];
+        result[d + 2] = data[s + 2];
+        result[d + 3] = data[s + 3];
+      }
+    }
+    return result;
+  }
+
+  const Algorithms = {
+    default: {
+      name: '默认混淆算法',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        const y = amess(height, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          const c = (y[b % height] + j) % height;
+          const d = y[c];
+          return [i + j * width, b + d * width];
+        }, encrypt);
+      }
+    },
+    tomato: {
+      name: '小番茄算法',
+      needsKey: false, defaultKey: '', keyHint: '无需密钥',
+      transform(data, width, height, _key, encrypt) {
+        const size = width * height;
+        const offset = Math.round(size * (Math.sqrt(5) - 1) / 2);
+        const curve = gilbert2d(width, height);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = i + j * width;
+          const b = (a + offset) % size;
+          const [c, d] = curve[a];
+          const [e, f] = curve[b];
+          return [e + f * width, c + d * width];
+        }, encrypt);
+      }
+    },
+    ybzj: {
+      name: 'Ybzj算法',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseFloat(key) || 0.666;
+        const col = logistic(k, height, width);
+        const row = logistic(k, width, height);
+        return transformPixels(data, width, height, (i, j) => {
+          const n = row[i][j];
+          const m = col[n][i];
+          return [i + j * width, m + n * width];
+        }, encrypt);
+      }
+    }
+  };
+
+  // ==================== 应用逻辑 ====================
+
+  const MAX_PIXELS = 8_000_000;
+  const MAX_SIDE = 4000;
+
+  const state = {
+    originalImageData: null,
+    workImageData: null,
+    width: 0,
+    height: 0,
+    fileName: 'image',
+    lastAction: null,
+    hasResult: false
+  };
+
+  const $ = id => document.getElementById(id);
+  const workCanvas = $('workCanvas');
+  const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+  const originCanvas = $('originCanvas');
+  const originCtx = originCanvas.getContext('2d');
+  const resultCanvas = $('resultCanvas');
+  const resultCtx = resultCanvas.getContext('2d');
+  const algorithmSelect = $('algorithm');
+  const keyInput = $('keyInput');
+  const previewSizeSelect = $('previewSize');
+
+  // 离屏缩放用
+  const _scratch = document.createElement('canvas');
+  const _scratchCtx = _scratch.getContext('2d');
+
+  function showToast(msg, duration = 2500) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function showLoading(show, text = '处理中...') {
+    $('loadingText').textContent = text;
+    $('loading').classList.toggle('show', show);
+  }
+
+  function getPreviewMax() {
+    return parseInt(previewSizeSelect.value, 10) || 300;
+  }
+
+  function updateKeyUI() {
+    const algo = Algorithms[algorithmSelect.value];
+    const keyRow = $('keyRow');
+    if (algo.needsKey) {
+      keyRow.style.display = '';
+      $('keyLabel').textContent = `密钥（${algo.keyHint}）`;
+      if (!keyInput.dataset.touched) keyInput.value = algo.defaultKey;
+      keyInput.disabled = false;
+      keyInput.placeholder = algo.keyHint;
+    } else {
+      keyRow.style.display = 'none';
+    }
+  }
+
+  function scaleImage(img) {
+    let { width, height } = img;
+    if (width > MAX_SIDE || height > MAX_SIDE) {
+      const ratio = Math.min(MAX_SIDE / width, MAX_SIDE / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    if (width * height > MAX_PIXELS) {
+      const ratio = Math.sqrt(MAX_PIXELS / (width * height));
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    return { width, height };
+  }
+
+  /** 将 ImageData 缩放到预览 canvas */
+  function drawPreview(previewCanvas, previewCtx, imageData) {
+    if (!imageData) return;
+    const maxSize = getPreviewMax();
+    const { width, height } = imageData;
+    const ratio = Math.min(maxSize / width, maxSize / height, 1);
+    const pw = Math.max(1, Math.round(width * ratio));
+    const ph = Math.max(1, Math.round(height * ratio));
+
+    _scratch.width = width;
+    _scratch.height = height;
+    _scratchCtx.putImageData(imageData, 0, 0);
+
+    previewCanvas.width = pw;
+    previewCanvas.height = ph;
+    previewCtx.clearRect(0, 0, pw, ph);
+    previewCtx.drawImage(_scratch, 0, 0, pw, ph);
+    previewCanvas.style.display = 'block';
+    previewCanvas.style.width = pw + 'px';
+    previewCanvas.style.height = ph + 'px';
+  }
+
+  function refreshOriginPreview() {
+    if (!state.originalImageData) return;
+    drawPreview(originCanvas, originCtx, state.originalImageData);
+    $('originPlaceholder').style.display = 'none';
+    $('originSize').textContent = `${state.width}×${state.height}`;
+  }
+
+  function refreshResultPreview() {
+    if (!state.hasResult || !state.workImageData) {
+      $('resultCanvas').style.display = 'none';
+      $('resultPlaceholder').style.display = 'block';
+      $('resultSize').textContent = '—';
+      return;
+    }
+    drawPreview(resultCanvas, resultCtx, state.workImageData);
+    $('resultPlaceholder').style.display = 'none';
+    $('resultSize').textContent = `${state.width}×${state.height}`;
+  }
+
+  function refreshAllPreviews() {
+    refreshOriginPreview();
+    refreshResultPreview();
+  }
+
+  function setButtonsEnabled(on) {
+    $('btnEncrypt').disabled = !on;
+    $('btnDecrypt').disabled = !on;
+    $('btnRestore').disabled = !on;
+    $('btnRerender').disabled = !on || !state.hasResult;
+    $('btnDownload').disabled = !on || !state.hasResult;
+  }
+
+  function copyImageData(data) {
+    return new ImageData(new Uint8ClampedArray(data.data), data.width, data.height);
+  }
+
+  function syncWorkCanvas(imageData) {
+    workCanvas.width = imageData.width;
+    workCanvas.height = imageData.height;
+    workCtx.putImageData(imageData, 0, 0);
+  }
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('请选择有效的图片文件');
+      return;
+    }
+    showLoading(true, '加载图片...');
+    try {
+      const img = await loadImage(file);
+      const { width, height } = scaleImage(img);
+
+      workCanvas.width = width;
+      workCanvas.height = height;
+      workCtx.clearRect(0, 0, width, height);
+      workCtx.drawImage(img, 0, 0, width, height);
+
+      const imageData = workCtx.getImageData(0, 0, width, height);
+      state.originalImageData = copyImageData(imageData);
+      state.workImageData = copyImageData(imageData);
+      state.width = width;
+      state.height = height;
+      state.fileName = (file.name || 'image').replace(/\.[^.]+$/, '');
+      state.lastAction = null;
+      state.hasResult = false;
+
+      refreshOriginPreview();
+      refreshResultPreview();
+      setButtonsEnabled(true);
+      $('btnRerender').disabled = true;
+      $('btnDownload').disabled = true;
+
+      $('infoBar').style.display = 'block';
+      $('infoText').innerHTML = `已加载 <strong>${state.fileName}</strong>（${width}×${height}），请手动点击混淆或反混淆`;
+      showToast(`图片已加载，未做任何处理`);
+    } catch {
+      showToast('图片加载失败');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  async function processImage(encrypt) {
+    if (!state.workImageData) {
+      showToast('请先上传图片');
+      return;
+    }
+    const algo = Algorithms[algorithmSelect.value];
+    const key = algo.needsKey ? keyInput.value : '';
+    showLoading(true, encrypt ? '混淆中...' : '反混淆中...');
+    await new Promise(r => setTimeout(r, 20));
+
+    try {
+      const { data, width, height } = state.workImageData;
+      const result = algo.transform(data, width, height, key, encrypt);
+      state.workImageData = new ImageData(result, width, height);
+      syncWorkCanvas(state.workImageData);
+      state.lastAction = encrypt ? 'encrypt' : 'decrypt';
+      state.hasResult = true;
+
+      refreshResultPreview();
+      $('btnRerender').disabled = false;
+      $('btnDownload').disabled = false;
+      showToast(encrypt ? '混淆完成' : '反混淆完成');
+    } catch (e) {
+      showToast('处理失败：' + e.message);
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function restore() {
+    if (!state.originalImageData) {
+      showToast('请先上传图片');
+      return;
+    }
+    state.workImageData = copyImageData(state.originalImageData);
+    syncWorkCanvas(state.workImageData);
+    state.lastAction = null;
+    state.hasResult = false;
+    refreshResultPreview();
+    $('btnRerender').disabled = true;
+    $('btnDownload').disabled = true;
+    showToast('已还原为上传时的原图');
+  }
+
+  function rerender() {
+    if (!state.lastAction) {
+      showToast('请先执行混淆或反混淆');
+      return;
+    }
+    processImage(state.lastAction === 'encrypt');
+  }
+
+  function downloadImage() {
+    if (!state.hasResult || !state.workImageData) return;
+    syncWorkCanvas(state.workImageData);
+    const link = document.createElement('a');
+    const algoName = Algorithms[algorithmSelect.value].name;
+    link.download = `${state.fileName}_${algoName}_${Date.now()}.jpg`;
+    link.href = workCanvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+    showToast('结果图已下载（全分辨率）');
+  }
+
+  // Events
+  algorithmSelect.addEventListener('change', () => {
+    keyInput.dataset.touched = '';
+    updateKeyUI();
+  });
+  keyInput.addEventListener('input', () => { keyInput.dataset.touched = '1'; });
+  previewSizeSelect.addEventListener('change', refreshAllPreviews);
+
+  $('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  const uploadZone = $('uploadZone');
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) handleFile(file);
+        break;
+      }
+    }
+  });
+
+  $('btnEncrypt').addEventListener('click', () => processImage(true));
+  $('btnDecrypt').addEventListener('click', () => processImage(false));
+  $('btnRestore').addEventListener('click', restore);
+  $('btnRerender').addEventListener('click', rerender);
+  $('btnDownload').addEventListener('click', downloadImage);
+
+  algorithmSelect.value = 'tomato';
+  updateKeyUI();
+  </script>
+</body>
+</html>
