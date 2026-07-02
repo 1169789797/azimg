@@ -139,49 +139,110 @@
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
     .btn-download { background: #3d5a80; color: #fff; font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
 
-    /* 双预览 */
-    .preview-section {
-      padding: 0 16px;
-    }
-    .preview-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .preview-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
-    .preview-header {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.75rem;
+    /* 批量列表 */
+    .batch-section { padding: 0 16px; }
+    .batch-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
     }
-    .preview-header .dim { color: var(--text-dim); font-size: 0.65rem; }
-    .canvas-wrap {
-      background: repeating-conic-gradient(#1e1e30 0% 25%, #181828 0% 50%) 0 0 / 12px 12px;
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .batch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .batch-empty {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 24px 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .batch-item {
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .batch-item-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+      min-width: 0;
+    }
+    .batch-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .batch-dim { color: var(--text-dim); flex-shrink: 0; }
+    .batch-status {
+      flex-shrink: 0;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text-dim);
+    }
+    .batch-status.done { color: var(--success); }
+    .batch-status.error { color: var(--primary); }
+    .batch-status.processing { color: var(--accent); }
+    .batch-preview-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 6px;
+    }
+    .batch-thumb {
+      background: repeating-conic-gradient(#1e1e30 0% 25%, #181828 0% 50%) 0 0 / 8px 8px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 8px;
-      min-height: 120px;
+      min-height: 56px;
+      padding: 4px;
+      position: relative;
+    }
+    .batch-thumb-label {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      background: rgba(15,15,26,0.75);
+      padding: 1px 4px;
+      border-radius: 4px;
+      pointer-events: none;
     }
     canvas.preview-canvas {
       display: block;
-      border-radius: 4px;
+      border-radius: 3px;
       image-rendering: auto;
+      max-width: 100%;
     }
-    .canvas-placeholder {
+    .thumb-placeholder {
       color: var(--text-dim);
-      font-size: 0.7rem;
+      font-size: 0.62rem;
       text-align: center;
-      padding: 20px 8px;
-      line-height: 1.5;
+      padding: 8px 4px;
+      line-height: 1.4;
     }
 
     .info-bar {
@@ -266,59 +327,43 @@
       </div>
       <div class="control-row">
         <div class="select-wrap">
-          <label class="field-label">预览尺寸</label>
+          <label class="field-label">缩略图尺寸</label>
           <select id="previewSize">
-            <option value="150">150 × 150</option>
-            <option value="200">200 × 200</option>
-            <option value="250">250 × 250</option>
-            <option value="300" selected>300 × 300</option>
-            <option value="400">400 × 400</option>
+            <option value="60">60 px</option>
+            <option value="80">80 px</option>
+            <option value="100" selected>100 px</option>
+            <option value="120">120 px</option>
+            <option value="150">150 px</option>
           </select>
         </div>
       </div>
     </div>
 
     <div class="upload-zone" id="uploadZone">
-      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="fileInput" accept="image/*" multiple>
       <div class="upload-icon">🖼️</div>
-      <div class="upload-text">点击或拖拽上传图片</div>
-      <div class="upload-hint">支持 JPG / PNG / WebP，也可粘贴图片</div>
+      <div class="upload-text">点击或拖拽上传图片（支持多选）</div>
+      <div class="upload-hint">支持 JPG / PNG / WebP，可多选批量上传，也可粘贴单张</div>
     </div>
 
     <!-- 操作按钮 -->
     <div class="action-bar">
-      <button class="btn btn-encrypt" id="btnEncrypt" disabled>🔒 混淆</button>
-      <button class="btn btn-decrypt" id="btnDecrypt" disabled>🔓 反混淆</button>
-      <button class="btn btn-restore" id="btnRestore" disabled>↩️ 还原</button>
+      <button class="btn btn-encrypt" id="btnEncrypt" disabled>🔒 全部混淆</button>
+      <button class="btn btn-decrypt" id="btnDecrypt" disabled>🔓 全部反混淆</button>
+      <button class="btn btn-restore" id="btnRestore" disabled>↩️ 全部还原</button>
       <div class="btn-row2">
-        <button class="btn btn-secondary" id="btnRerender" disabled>🔄 重新渲染</button>
-        <button class="btn btn-download" id="btnDownload" disabled>⬇️ 下载结果</button>
+        <button class="btn btn-secondary" id="btnRerender" disabled>🔄 全部重渲染</button>
+        <button class="btn btn-download" id="btnDownload" disabled>⬇️ 批量下载</button>
       </div>
     </div>
 
-    <section class="preview-section">
-      <div class="preview-grid">
-        <div class="preview-card">
-          <div class="preview-header">
-            <span>原图</span>
-            <span class="dim" id="originSize">—</span>
-          </div>
-          <div class="canvas-wrap">
-            <canvas class="preview-canvas" id="originCanvas" style="display:none"></canvas>
-            <div class="canvas-placeholder" id="originPlaceholder">上传后显示</div>
-          </div>
-        </div>
-        <div class="preview-card">
-          <div class="preview-header">
-            <span>结果图</span>
-            <span class="dim" id="resultSize">—</span>
-          </div>
-          <div class="canvas-wrap">
-            <canvas class="preview-canvas" id="resultCanvas" style="display:none"></canvas>
-            <div class="canvas-placeholder" id="resultPlaceholder">点击混淆或反混淆</div>
-          </div>
-        </div>
+    <section class="batch-section">
+      <div class="batch-toolbar">
+        <span id="batchCount">共 0 张</span>
+        <button class="btn btn-secondary btn-sm" id="btnClear" disabled>清空列表</button>
       </div>
+      <div class="batch-list" id="batchList" style="display:none"></div>
+      <div class="batch-empty" id="batchEmpty">上传后在此显示缩略图列表</div>
     </section>
 
     <div class="info-bar" id="infoBar" style="display:none">
@@ -693,29 +738,20 @@
 
   const MAX_PIXELS = 8_000_000;
   const MAX_SIDE = 4000;
+  const DOWNLOAD_GAP_MS = 450;
 
-  const state = {
-    originalImageData: null,
-    workImageData: null,
-    width: 0,
-    height: 0,
-    fileName: 'image',
-    lastAction: null,
-    hasResult: false
-  };
+  let itemIdCounter = 0;
+  const batchState = { items: [], isBusy: false };
 
   const $ = id => document.getElementById(id);
   const workCanvas = $('workCanvas');
   const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
-  const originCanvas = $('originCanvas');
-  const originCtx = originCanvas.getContext('2d');
-  const resultCanvas = $('resultCanvas');
-  const resultCtx = resultCanvas.getContext('2d');
   const algorithmSelect = $('algorithm');
   const keyInput = $('keyInput');
   const previewSizeSelect = $('previewSize');
+  const batchList = $('batchList');
+  const batchEmpty = $('batchEmpty');
 
-  // 离屏缩放用
   const _scratch = document.createElement('canvas');
   const _scratchCtx = _scratch.getContext('2d');
 
@@ -732,7 +768,7 @@
   }
 
   function getPreviewMax() {
-    return parseInt(previewSizeSelect.value, 10) || 300;
+    return parseInt(previewSizeSelect.value, 10) || 100;
   }
 
   function updateKeyUI() {
@@ -765,9 +801,29 @@
     return { width, height };
   }
 
-  /** 将 ImageData 缩放到预览 canvas */
-  function drawPreview(previewCanvas, previewCtx, imageData) {
-    if (!imageData) return;
+  function copyImageData(data) {
+    return new ImageData(new Uint8ClampedArray(data.data), data.width, data.height);
+  }
+
+  function imageDataFromImg(img) {
+    const { width, height } = scaleImage(img);
+    workCanvas.width = width;
+    workCanvas.height = height;
+    workCtx.clearRect(0, 0, width, height);
+    workCtx.drawImage(img, 0, 0, width, height);
+    return {
+      imageData: workCtx.getImageData(0, 0, width, height),
+      width,
+      height
+    };
+  }
+
+  function drawPreview(previewCanvas, previewCtx, placeholderEl, imageData) {
+    if (!imageData) {
+      previewCanvas.style.display = 'none';
+      placeholderEl.style.display = 'block';
+      return;
+    }
     const maxSize = getPreviewMax();
     const { width, height } = imageData;
     const ratio = Math.min(maxSize / width, maxSize / height, 1);
@@ -785,48 +841,102 @@
     previewCanvas.style.display = 'block';
     previewCanvas.style.width = pw + 'px';
     previewCanvas.style.height = ph + 'px';
+    placeholderEl.style.display = 'none';
   }
 
-  function refreshOriginPreview() {
-    if (!state.originalImageData) return;
-    drawPreview(originCanvas, originCtx, state.originalImageData);
-    $('originPlaceholder').style.display = 'none';
-    $('originSize').textContent = `${state.width}×${state.height}`;
-  }
-
-  function refreshResultPreview() {
-    if (!state.hasResult || !state.workImageData) {
-      $('resultCanvas').style.display = 'none';
-      $('resultPlaceholder').style.display = 'block';
-      $('resultSize').textContent = '—';
-      return;
+  function setItemStatus(item, status, text) {
+    item.status = status;
+    if (item.ui?.statusEl) {
+      item.ui.statusEl.textContent = text;
+      item.ui.statusEl.className = 'batch-status' + (status === 'done' ? ' done' : status === 'error' ? ' error' : status === 'processing' ? ' processing' : '');
     }
-    drawPreview(resultCanvas, resultCtx, state.workImageData);
-    $('resultPlaceholder').style.display = 'none';
-    $('resultSize').textContent = `${state.width}×${state.height}`;
+  }
+
+  function refreshItemPreview(item) {
+    if (!item.ui) return;
+    drawPreview(item.ui.originCanvas, item.ui.originCtx, item.ui.originPlaceholder, item.originalImageData);
+    if (item.hasResult) {
+      drawPreview(item.ui.resultCanvas, item.ui.resultCtx, item.ui.resultPlaceholder, item.workImageData);
+    } else {
+      item.ui.resultCanvas.style.display = 'none';
+      item.ui.resultPlaceholder.style.display = 'block';
+      item.ui.resultPlaceholder.textContent = '待处理';
+    }
   }
 
   function refreshAllPreviews() {
-    refreshOriginPreview();
-    refreshResultPreview();
+    batchState.items.forEach(refreshItemPreview);
   }
 
-  function setButtonsEnabled(on) {
-    $('btnEncrypt').disabled = !on;
-    $('btnDecrypt').disabled = !on;
-    $('btnRestore').disabled = !on;
-    $('btnRerender').disabled = !on || !state.hasResult;
-    $('btnDownload').disabled = !on || !state.hasResult;
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;');
   }
 
-  function copyImageData(data) {
-    return new ImageData(new Uint8ClampedArray(data.data), data.width, data.height);
+  function createBatchItemEl(item) {
+    const safeName = escapeHtml(item.fileName);
+    const el = document.createElement('div');
+    el.className = 'batch-item';
+    el.dataset.id = item.id;
+    el.innerHTML = `
+      <div class="batch-item-head">
+        <span class="batch-name" title="${safeName}">${safeName}</span>
+        <span class="batch-dim">${item.width}×${item.height}</span>
+        <span class="batch-status">待处理</span>
+      </div>
+      <div class="batch-preview-row">
+        <div class="batch-thumb">
+          <span class="batch-thumb-label">原图</span>
+          <canvas class="preview-canvas"></canvas>
+          <div class="thumb-placeholder">—</div>
+        </div>
+        <div class="batch-thumb">
+          <span class="batch-thumb-label">结果</span>
+          <canvas class="preview-canvas"></canvas>
+          <div class="thumb-placeholder">待处理</div>
+        </div>
+      </div>
+    `;
+    const thumbs = el.querySelectorAll('.batch-thumb');
+    item.ui = {
+      root: el,
+      statusEl: el.querySelector('.batch-status'),
+      originCanvas: thumbs[0].querySelector('canvas'),
+      originCtx: thumbs[0].querySelector('canvas').getContext('2d'),
+      originPlaceholder: thumbs[0].querySelector('.thumb-placeholder'),
+      resultCanvas: thumbs[1].querySelector('canvas'),
+      resultCtx: thumbs[1].querySelector('canvas').getContext('2d'),
+      resultPlaceholder: thumbs[1].querySelector('.thumb-placeholder')
+    };
+    refreshItemPreview(item);
+    return el;
   }
 
-  function syncWorkCanvas(imageData) {
-    workCanvas.width = imageData.width;
-    workCanvas.height = imageData.height;
-    workCtx.putImageData(imageData, 0, 0);
+  function updateBatchUI() {
+    const count = batchState.items.length;
+    const hasItems = count > 0;
+    const hasResult = batchState.items.some(i => i.hasResult);
+    const hasLastAction = batchState.items.some(i => i.lastAction);
+
+    $('batchCount').textContent = `共 ${count} 张`;
+    batchList.style.display = hasItems ? 'flex' : 'none';
+    batchEmpty.style.display = hasItems ? 'none' : 'block';
+
+    const disabled = !hasItems || batchState.isBusy;
+    $('btnEncrypt').disabled = disabled;
+    $('btnDecrypt').disabled = disabled;
+    $('btnRestore').disabled = disabled;
+    $('btnClear').disabled = disabled;
+    $('btnRerender').disabled = disabled || !hasLastAction;
+    $('btnDownload').disabled = disabled || !hasResult;
+
+    $('infoBar').style.display = hasItems ? 'block' : 'none';
+    if (hasItems) {
+      const done = batchState.items.filter(i => i.hasResult).length;
+      $('infoText').innerHTML = `已加载 <strong>${count}</strong> 张，已完成 <strong>${done}</strong> 张，点击上方按钮批量处理`;
+    }
   }
 
   function loadImage(file) {
@@ -843,115 +953,207 @@
     });
   }
 
-  async function handleFile(file) {
-    if (!file || !file.type.startsWith('image/')) {
+  function createItemRecord(img, file) {
+    const { imageData, width, height } = imageDataFromImg(img);
+    const original = copyImageData(imageData);
+    return {
+      id: 'item_' + (++itemIdCounter),
+      fileName: (file.name || 'image').replace(/\.[^.]+$/, ''),
+      width,
+      height,
+      originalImageData: original,
+      workImageData: copyImageData(original),
+      lastAction: null,
+      hasResult: false,
+      status: 'ready',
+      ui: null
+    };
+  }
+
+  async function handleFiles(fileList) {
+    const files = [...fileList].filter(f => f && f.type.startsWith('image/'));
+    if (!files.length) {
       showToast('请选择有效的图片文件');
       return;
     }
-    showLoading(true, '加载图片...');
-    try {
-      const img = await loadImage(file);
-      const { width, height } = scaleImage(img);
 
-      workCanvas.width = width;
-      workCanvas.height = height;
-      workCtx.clearRect(0, 0, width, height);
-      workCtx.drawImage(img, 0, 0, width, height);
+    showLoading(true, `加载 0/${files.length}...`);
+    let loaded = 0;
+    let failed = 0;
 
-      const imageData = workCtx.getImageData(0, 0, width, height);
-      state.originalImageData = copyImageData(imageData);
-      state.workImageData = copyImageData(imageData);
-      state.width = width;
-      state.height = height;
-      state.fileName = (file.name || 'image').replace(/\.[^.]+$/, '');
-      state.lastAction = null;
-      state.hasResult = false;
-
-      refreshOriginPreview();
-      refreshResultPreview();
-      setButtonsEnabled(true);
-      $('btnRerender').disabled = true;
-      $('btnDownload').disabled = true;
-
-      $('infoBar').style.display = 'block';
-      $('infoText').innerHTML = `已加载 <strong>${state.fileName}</strong>（${width}×${height}），请手动点击混淆或反混淆`;
-      showToast(`图片已加载，未做任何处理`);
-    } catch {
-      showToast('图片加载失败');
-    } finally {
-      showLoading(false);
+    for (const file of files) {
+      try {
+        const img = await loadImage(file);
+        const item = createItemRecord(img, file);
+        batchState.items.push(item);
+        batchList.appendChild(createBatchItemEl(item));
+        loaded++;
+      } catch {
+        failed++;
+      }
+      showLoading(true, `加载 ${loaded + failed}/${files.length}...`);
     }
+
+    showLoading(false);
+    updateBatchUI();
+
+    if (loaded) showToast(`已加载 ${loaded} 张${failed ? `，${failed} 张失败` : ''}`);
+    else showToast('图片加载失败');
   }
 
-  async function processImage(encrypt) {
-    if (!state.workImageData) {
-      showToast('请先上传图片');
-      return;
-    }
+  function transformItemData(item, encrypt) {
     const algo = Algorithms[algorithmSelect.value];
     const key = algo.needsKey ? keyInput.value : '';
-    showLoading(true, encrypt ? '混淆中...' : '反混淆中...');
-    await new Promise(r => setTimeout(r, 20));
+    let imageData = item.workImageData;
+    if (algo.needsBlockPad) {
+      imageData = padToBlock32(imageData);
+    }
+    const { data, width, height } = imageData;
+    const result = algo.transform(data, width, height, key, encrypt);
+    return new ImageData(result, width, height);
+  }
 
+  async function processItem(item, encrypt) {
+    setItemStatus(item, 'processing', encrypt ? '混淆中' : '反混淆中');
+    await new Promise(r => setTimeout(r, 0));
     try {
-      let imageData = state.workImageData;
-      if (algo.needsBlockPad) {
-        const padded = padToBlock32(imageData);
-        if (padded.width !== imageData.width || padded.height !== imageData.height) {
-          showToast(`块混淆：已填充至 ${padded.width}×${padded.height}`);
-        }
-        imageData = padded;
-      }
-      const { data, width, height } = imageData;
-      const result = algo.transform(data, width, height, key, encrypt);
-      state.workImageData = new ImageData(result, width, height);
-      syncWorkCanvas(state.workImageData);
-      state.lastAction = encrypt ? 'encrypt' : 'decrypt';
-      state.hasResult = true;
-
-      refreshResultPreview();
-      $('btnRerender').disabled = false;
-      $('btnDownload').disabled = false;
-      showToast(encrypt ? '混淆完成' : '反混淆完成');
+      item.workImageData = transformItemData(item, encrypt);
+      item.lastAction = encrypt ? 'encrypt' : 'decrypt';
+      item.hasResult = true;
+      setItemStatus(item, 'done', encrypt ? '已混淆' : '已反混淆');
+      refreshItemPreview(item);
     } catch (e) {
-      showToast('处理失败：' + e.message);
-    } finally {
-      showLoading(false);
+      setItemStatus(item, 'error', '失败');
+      throw e;
     }
   }
 
-  function restore() {
-    if (!state.originalImageData) {
+  async function processAll(encrypt) {
+    if (!batchState.items.length) {
       showToast('请先上传图片');
       return;
     }
-    state.workImageData = copyImageData(state.originalImageData);
-    syncWorkCanvas(state.workImageData);
-    state.lastAction = null;
-    state.hasResult = false;
-    refreshResultPreview();
-    $('btnRerender').disabled = true;
-    $('btnDownload').disabled = true;
-    showToast('已还原为上传时的原图');
+    batchState.isBusy = true;
+    updateBatchUI();
+
+    const total = batchState.items.length;
+    let ok = 0;
+    let fail = 0;
+
+    for (let i = 0; i < total; i++) {
+      const item = batchState.items[i];
+      showLoading(true, `${encrypt ? '混淆' : '反混淆'} ${i + 1}/${total}：${item.fileName}`);
+      try {
+        await processItem(item, encrypt);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    batchState.isBusy = false;
+    showLoading(false);
+    updateBatchUI();
+    showToast(`${encrypt ? '混淆' : '反混淆'}完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`);
   }
 
-  function rerender() {
-    if (!state.lastAction) {
+  function restoreAll() {
+    if (!batchState.items.length) {
+      showToast('请先上传图片');
+      return;
+    }
+    batchState.items.forEach(item => {
+      item.workImageData = copyImageData(item.originalImageData);
+      item.lastAction = null;
+      item.hasResult = false;
+      setItemStatus(item, 'ready', '待处理');
+      refreshItemPreview(item);
+    });
+    updateBatchUI();
+    showToast('已全部还原为原图');
+  }
+
+  async function rerenderAll() {
+    const items = batchState.items.filter(i => i.lastAction);
+    if (!items.length) {
       showToast('请先执行混淆或反混淆');
       return;
     }
-    processImage(state.lastAction === 'encrypt');
+    batchState.isBusy = true;
+    updateBatchUI();
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      showLoading(true, `重渲染 ${i + 1}/${items.length}：${item.fileName}`);
+      item.workImageData = copyImageData(item.originalImageData);
+      try {
+        await processItem(item, item.lastAction === 'encrypt');
+      } catch { /* status already set */ }
+    }
+
+    batchState.isBusy = false;
+    showLoading(false);
+    updateBatchUI();
+    showToast('全部重渲染完成');
   }
 
-  function downloadImage() {
-    if (!state.hasResult || !state.workImageData) return;
-    syncWorkCanvas(state.workImageData);
+  function downloadItem(item, index, total) {
+    workCanvas.width = item.workImageData.width;
+    workCanvas.height = item.workImageData.height;
+    workCtx.putImageData(item.workImageData, 0, 0);
     const link = document.createElement('a');
-    const algoName = Algorithms[algorithmSelect.value].name;
-    link.download = `${state.fileName}_${algoName}_${Date.now()}.jpg`;
+    const algoName = Algorithms[algorithmSelect.value].name.replace(/\s+/g, '_');
+    const suffix = total > 1 ? `_${String(index + 1).padStart(2, '0')}` : '';
+    link.download = `${item.fileName}_${algoName}${suffix}.jpg`;
     link.href = workCanvas.toDataURL('image/jpeg', 0.95);
+    document.body.appendChild(link);
     link.click();
-    showToast('结果图已下载（全分辨率）');
+    document.body.removeChild(link);
+  }
+
+  function downloadAll() {
+    const items = batchState.items.filter(i => i.hasResult);
+    if (!items.length) {
+      showToast('没有可下载的结果');
+      return;
+    }
+
+    batchState.isBusy = true;
+    updateBatchUI();
+    showLoading(true, `下载队列 1/${items.length}...`);
+
+    let index = 0;
+    function next() {
+      if (index >= items.length) {
+        batchState.isBusy = false;
+        showLoading(false);
+        updateBatchUI();
+        showToast(`已触发 ${items.length} 个下载（全分辨率）`);
+        return;
+      }
+      downloadItem(items[index], index, items.length);
+      index++;
+      if (index < items.length) {
+        showLoading(true, `下载队列 ${index + 1}/${items.length}...`);
+        setTimeout(next, DOWNLOAD_GAP_MS);
+      } else {
+        setTimeout(() => {
+          batchState.isBusy = false;
+          showLoading(false);
+          updateBatchUI();
+          showToast(`已触发 ${items.length} 个下载（全分辨率）`);
+        }, DOWNLOAD_GAP_MS);
+      }
+    }
+    next();
+  }
+
+  function clearBatch() {
+    if (!batchState.items.length) return;
+    batchState.items = [];
+    batchList.innerHTML = '';
+    updateBatchUI();
+    showToast('列表已清空');
   }
 
   // Events
@@ -963,7 +1165,8 @@
   previewSizeSelect.addEventListener('change', refreshAllPreviews);
 
   $('fileInput').addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
+    if (e.target.files?.length) handleFiles(e.target.files);
+    e.target.value = '';
   });
 
   const uploadZone = $('uploadZone');
@@ -972,7 +1175,7 @@
   uploadZone.addEventListener('drop', e => {
     e.preventDefault();
     uploadZone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
   });
 
   document.addEventListener('paste', e => {
@@ -981,20 +1184,22 @@
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) handleFile(file);
+        if (file) handleFiles([file]);
         break;
       }
     }
   });
 
-  $('btnEncrypt').addEventListener('click', () => processImage(true));
-  $('btnDecrypt').addEventListener('click', () => processImage(false));
-  $('btnRestore').addEventListener('click', restore);
-  $('btnRerender').addEventListener('click', rerender);
-  $('btnDownload').addEventListener('click', downloadImage);
+  $('btnEncrypt').addEventListener('click', () => processAll(true));
+  $('btnDecrypt').addEventListener('click', () => processAll(false));
+  $('btnRestore').addEventListener('click', restoreAll);
+  $('btnRerender').addEventListener('click', rerenderAll);
+  $('btnDownload').addEventListener('click', downloadAll);
+  $('btnClear').addEventListener('click', clearBatch);
 
   algorithmSelect.value = 'tomato';
   updateKeyUI();
+  updateBatchUI();
   </script>
 </body>
 </html>
