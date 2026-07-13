@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#1a1a2e">
+  <link rel="icon" type="image/png" href="ico.png">
+  <link rel="apple-touch-icon" href="ico.png">
   <title>图片混淆工具</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -233,6 +235,11 @@
       padding: 4px;
       position: relative;
     }
+    .batch-thumb.clickable {
+      cursor: pointer;
+      transition: outline-color 0.15s;
+    }
+    .batch-thumb.clickable:active { opacity: 0.85; }
     .batch-thumb-label {
       position: absolute;
       top: 4px;
@@ -298,6 +305,159 @@
       max-width: 90%; text-align: center;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* 全屏图片预览 */
+    .viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      background: rgba(8, 8, 14, 0.96);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .viewer.show { opacity: 1; pointer-events: auto; }
+    .viewer-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .viewer-type {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      padding: 2px 8px;
+      background: var(--surface2);
+      border-radius: 6px;
+    }
+    .viewer-close {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .viewer-stage {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      touch-action: none;
+      position: relative;
+    }
+    .viewer-canvas-wrap {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .viewer-canvas-wrap canvas {
+      display: block;
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .viewer-toolbar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-btn {
+      min-width: 40px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .viewer-btn:active { transform: scale(0.96); }
+    .viewer-zoom-label {
+      min-width: 52px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .viewer-toolbar-index {
+      min-width: 56px;
+      padding: 0 10px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .viewer-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      background: rgba(15,15,26,0.8);
+      padding: 4px 10px;
+      border-radius: 8px;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .viewer-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 42px;
+      height: 60px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(26, 26, 46, 0.88);
+      color: var(--text);
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      pointer-events: auto;
+    }
+    .viewer-nav:active:not(:disabled) { transform: translateY(-50%) scale(0.96); }
+    .viewer-nav:disabled { opacity: 0.25; cursor: not-allowed; }
+    .viewer-nav-prev { left: 10px; }
+    .viewer-nav-next { right: 10px; }
   </style>
 </head>
 <body>
@@ -371,7 +531,7 @@
         <button class="btn btn-secondary btn-sm" id="btnClear" disabled>清空列表</button>
       </div>
       <div class="batch-list" id="batchList" style="display:none"></div>
-      <div class="batch-empty" id="batchEmpty">上传后在此显示缩略图列表</div>
+      <div class="batch-empty" id="batchEmpty">上传后在此显示缩略图列表，点击缩略图可全屏预览</div>
     </section>
 
     <div class="info-bar" id="infoBar" style="display:none">
@@ -392,6 +552,31 @@
     <div class="loading-text" id="loadingText">处理中...</div>
   </div>
   <div class="toast" id="toast"></div>
+
+  <!-- 全屏图片预览 -->
+  <div class="viewer" id="imageViewer" aria-hidden="true">
+    <div class="viewer-header">
+      <span class="viewer-title" id="viewerTitle">—</span>
+      <span class="viewer-type" id="viewerType">结果</span>
+      <button class="viewer-close" id="viewerClose" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="viewer-stage" id="viewerStage">
+      <div class="viewer-canvas-wrap" id="viewerWrap">
+        <canvas id="viewerCanvas"></canvas>
+      </div>
+      <div class="viewer-hint">双指捏合 / 滚轮缩放 · 拖动平移 · ← → 切换</div>
+      <button class="viewer-nav viewer-nav-prev" id="viewerPrev" type="button" aria-label="上一张">‹</button>
+      <button class="viewer-nav viewer-nav-next" id="viewerNext" type="button" aria-label="下一张">›</button>
+    </div>
+    <div class="viewer-toolbar">
+      <button class="viewer-btn" id="viewerZoomOut" type="button">−</button>
+      <span class="viewer-zoom-label" id="viewerZoomLevel">100%</span>
+      <button class="viewer-btn" id="viewerZoomIn" type="button">+</button>
+      <button class="viewer-btn" id="viewerZoomFit" type="button">适应</button>
+      <span class="viewer-toolbar-index" id="viewerToolbarIndex">—</span>
+      <button class="viewer-btn" id="viewerToggle" type="button" style="display:none">原图</button>
+    </div>
+  </div>
 
   <script>
   // ==================== 算法核心 ====================
@@ -863,12 +1048,15 @@
   function refreshItemPreview(item) {
     if (!item.ui) return;
     drawPreview(item.ui.originCanvas, item.ui.originCtx, item.ui.originPlaceholder, item.originalImageData);
+    item.ui.originThumb.classList.add('clickable');
     if (item.hasResult) {
       drawPreview(item.ui.resultCanvas, item.ui.resultCtx, item.ui.resultPlaceholder, item.workImageData);
+      item.ui.resultThumb.classList.add('clickable');
     } else {
       item.ui.resultCanvas.style.display = 'none';
       item.ui.resultPlaceholder.style.display = 'block';
       item.ui.resultPlaceholder.textContent = '待处理';
+      item.ui.resultThumb.classList.remove('clickable');
     }
   }
 
@@ -911,13 +1099,20 @@
     item.ui = {
       root: el,
       statusEl: el.querySelector('.batch-status'),
+      originThumb: thumbs[0],
       originCanvas: thumbs[0].querySelector('canvas'),
       originCtx: thumbs[0].querySelector('canvas').getContext('2d'),
       originPlaceholder: thumbs[0].querySelector('.thumb-placeholder'),
+      resultThumb: thumbs[1],
       resultCanvas: thumbs[1].querySelector('canvas'),
       resultCtx: thumbs[1].querySelector('canvas').getContext('2d'),
       resultPlaceholder: thumbs[1].querySelector('.thumb-placeholder')
     };
+    thumbs[0].addEventListener('click', () => openViewer(item, 'origin'));
+    thumbs[1].addEventListener('click', () => {
+      if (item.hasResult) openViewer(item, 'result');
+      else showToast('请先混淆或反混淆');
+    });
     refreshItemPreview(item);
     return el;
   }
@@ -943,7 +1138,7 @@
     $('infoBar').style.display = hasItems ? 'block' : 'none';
     if (hasItems) {
       const done = batchState.items.filter(i => i.hasResult).length;
-      $('infoText').innerHTML = `已加载 <strong>${count}</strong> 张，已完成 <strong>${done}</strong> 张，点击上方按钮批量处理`;
+      $('infoText').innerHTML = `已加载 <strong>${count}</strong> 张，已完成 <strong>${done}</strong> 张；点击缩略图可全屏预览`;
     }
   }
 
@@ -1158,11 +1353,290 @@
 
   function clearBatch() {
     if (!batchState.items.length) return;
+    closeViewer();
     batchState.items = [];
     batchList.innerHTML = '';
     updateBatchUI();
     showToast('列表已清空');
   }
+
+  // ==================== 全屏预览 ====================
+
+  const viewerEl = $('imageViewer');
+  const viewerStage = $('viewerStage');
+  const viewerWrap = $('viewerWrap');
+  const viewerCanvas = $('viewerCanvas');
+  const viewerCtx = viewerCanvas.getContext('2d');
+
+  const viewerState = {
+    item: null,
+    type: 'result',
+    scale: 1,
+    tx: 0,
+    ty: 0,
+    imgW: 0,
+    imgH: 0,
+    dragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragOriginTx: 0,
+    dragOriginTy: 0,
+    pinchStartDist: 0,
+    pinchStartScale: 1,
+    pinchCenterX: 0,
+    pinchCenterY: 0
+  };
+
+  function getViewerImageData(item, type) {
+    return type === 'origin' ? item.originalImageData : item.workImageData;
+  }
+
+  function applyViewerTransform() {
+    viewerWrap.style.transform = `translate(${viewerState.tx}px, ${viewerState.ty}px) scale(${viewerState.scale})`;
+    $('viewerZoomLevel').textContent = Math.round(viewerState.scale * 100) + '%';
+  }
+
+  function getStageRect() {
+    return viewerStage.getBoundingClientRect();
+  }
+
+  function fitViewerTransform() {
+    const stage = getStageRect();
+    const pad = 32;
+    const availW = Math.max(stage.width - pad * 2, 1);
+    const availH = Math.max(stage.height - pad * 2, 1);
+    const scale = Math.min(availW / viewerState.imgW, availH / viewerState.imgH, 1);
+    viewerState.scale = Math.max(scale, 0.05);
+    viewerState.tx = (stage.width - viewerState.imgW * viewerState.scale) / 2;
+    viewerState.ty = (stage.height - viewerState.imgH * viewerState.scale) / 2;
+    applyViewerTransform();
+  }
+
+  function scheduleFitViewer() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(fitViewerTransform);
+    });
+  }
+
+  function drawViewerImage(imageData) {
+    viewerState.imgW = imageData.width;
+    viewerState.imgH = imageData.height;
+    viewerCanvas.width = imageData.width;
+    viewerCanvas.height = imageData.height;
+    viewerCtx.putImageData(imageData, 0, 0);
+    viewerState.scale = 1;
+    viewerState.tx = 0;
+    viewerState.ty = 0;
+    applyViewerTransform();
+    scheduleFitViewer();
+  }
+
+  function zoomViewerAt(factor, cx, cy) {
+    const prev = viewerState.scale;
+    const next = Math.min(Math.max(prev * factor, 0.05), 12);
+    if (next === prev) return;
+    const ratio = next / prev;
+    viewerState.tx = cx - (cx - viewerState.tx) * ratio;
+    viewerState.ty = cy - (cy - viewerState.ty) * ratio;
+    viewerState.scale = next;
+    applyViewerTransform();
+  }
+
+  function getViewerNavItems() {
+    if (viewerState.type === 'result') {
+      return batchState.items.filter(i => i.hasResult);
+    }
+    return batchState.items;
+  }
+
+  function getViewerNavIndex() {
+    const navItems = getViewerNavItems();
+    return navItems.findIndex(i => i.id === viewerState.item?.id);
+  }
+
+  function setViewerIndexText(text) {
+    $('viewerToolbarIndex').textContent = text;
+  }
+
+  function updateViewerNavButtons() {
+    const navItems = getViewerNavItems();
+    const idx = getViewerNavIndex();
+    const total = navItems.length;
+    const prevBtn = $('viewerPrev');
+    const nextBtn = $('viewerNext');
+
+    if (total <= 1) {
+      setViewerIndexText(total === 1 ? '1/1' : '—');
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      return;
+    }
+
+    prevBtn.style.display = '';
+    nextBtn.style.display = '';
+    setViewerIndexText(`${idx + 1}/${total}`);
+    prevBtn.disabled = idx <= 0;
+    nextBtn.disabled = idx >= total - 1;
+  }
+
+  function navigateViewer(direction) {
+    const navItems = getViewerNavItems();
+    const idx = getViewerNavIndex();
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= navItems.length) return;
+
+    const item = navItems[nextIdx];
+    viewerState.item = item;
+    updateViewerMeta();
+    drawViewerImage(getViewerImageData(item, viewerState.type));
+  }
+
+  function updateViewerMeta() {
+    const item = viewerState.item;
+    if (!item) return;
+    const isOrigin = viewerState.type === 'origin';
+    $('viewerTitle').textContent = item.fileName;
+    $('viewerType').textContent = isOrigin ? '原图' : '结果';
+    $('viewerToggle').style.display = item.hasResult ? '' : 'none';
+    $('viewerToggle').textContent = isOrigin ? '看结果' : '看原图';
+    updateViewerNavButtons();
+  }
+
+  function openViewer(item, type) {
+    const imageData = getViewerImageData(item, type);
+    if (!imageData) {
+      showToast('暂无预览');
+      return;
+    }
+    viewerState.item = item;
+    viewerState.type = type;
+    viewerEl.classList.add('show');
+    viewerEl.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    updateViewerMeta();
+    drawViewerImage(imageData);
+  }
+
+  function closeViewer() {
+    viewerEl.classList.remove('show');
+    viewerEl.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    viewerState.item = null;
+    viewerState.dragging = false;
+    viewerState.pinchStartDist = 0;
+  }
+
+  function toggleViewerType() {
+    const item = viewerState.item;
+    if (!item || !item.hasResult) return;
+    viewerState.type = viewerState.type === 'origin' ? 'result' : 'origin';
+    updateViewerMeta();
+    drawViewerImage(getViewerImageData(item, viewerState.type));
+  }
+
+  function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  viewerStage.addEventListener('wheel', e => {
+    if (!viewerState.item) return;
+    e.preventDefault();
+    const stage = getStageRect();
+    const cx = e.clientX - stage.left;
+    const cy = e.clientY - stage.top;
+    zoomViewerAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, cx, cy);
+  }, { passive: false });
+
+  viewerStage.addEventListener('pointerdown', e => {
+    if (!viewerState.item || e.button !== 0) return;
+    if (e.target.closest('.viewer-nav')) return;
+    viewerState.dragging = true;
+    viewerState.dragStartX = e.clientX;
+    viewerState.dragStartY = e.clientY;
+    viewerState.dragOriginTx = viewerState.tx;
+    viewerState.dragOriginTy = viewerState.ty;
+    viewerStage.setPointerCapture(e.pointerId);
+  });
+
+  viewerStage.addEventListener('pointermove', e => {
+    if (!viewerState.dragging) return;
+    viewerState.tx = viewerState.dragOriginTx + (e.clientX - viewerState.dragStartX);
+    viewerState.ty = viewerState.dragOriginTy + (e.clientY - viewerState.dragStartY);
+    applyViewerTransform();
+  });
+
+  function endViewerDrag(e) {
+    if (!viewerState.dragging) return;
+    viewerState.dragging = false;
+    try { viewerStage.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+  }
+  viewerStage.addEventListener('pointerup', endViewerDrag);
+  viewerStage.addEventListener('pointercancel', endViewerDrag);
+
+  viewerStage.addEventListener('touchstart', e => {
+    if (!viewerState.item || e.touches.length !== 2) return;
+    viewerState.pinchStartDist = getTouchDistance(e.touches);
+    viewerState.pinchStartScale = viewerState.scale;
+    const stage = getStageRect();
+    viewerState.pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - stage.left;
+    viewerState.pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - stage.top;
+  }, { passive: true });
+
+  viewerStage.addEventListener('touchmove', e => {
+    if (!viewerState.item || e.touches.length !== 2 || !viewerState.pinchStartDist) return;
+    e.preventDefault();
+    const dist = getTouchDistance(e.touches);
+    const next = Math.min(Math.max(viewerState.pinchStartScale * (dist / viewerState.pinchStartDist), 0.05), 12);
+    const ratio = next / viewerState.scale;
+    const cx = viewerState.pinchCenterX;
+    const cy = viewerState.pinchCenterY;
+    viewerState.tx = cx - (cx - viewerState.tx) * ratio;
+    viewerState.ty = cy - (cy - viewerState.ty) * ratio;
+    viewerState.scale = next;
+    applyViewerTransform();
+  }, { passive: false });
+
+  viewerStage.addEventListener('touchend', () => {
+    viewerState.pinchStartDist = 0;
+  });
+
+  $('viewerClose').addEventListener('click', closeViewer);
+  $('viewerZoomIn').addEventListener('click', () => {
+    const stage = getStageRect();
+    zoomViewerAt(1.25, stage.width / 2, stage.height / 2);
+  });
+  $('viewerZoomOut').addEventListener('click', () => {
+    const stage = getStageRect();
+    zoomViewerAt(1 / 1.25, stage.width / 2, stage.height / 2);
+  });
+  $('viewerZoomFit').addEventListener('click', fitViewerTransform);
+  $('viewerToggle').addEventListener('click', toggleViewerType);
+  $('viewerPrev').addEventListener('click', e => {
+    e.stopPropagation();
+    navigateViewer(-1);
+  });
+  $('viewerNext').addEventListener('click', e => {
+    e.stopPropagation();
+    navigateViewer(1);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (!viewerState.item) return;
+    if (e.key === 'Escape') closeViewer();
+    else if (e.key === 'ArrowLeft') navigateViewer(-1);
+    else if (e.key === 'ArrowRight') navigateViewer(1);
+    else if (e.key === '+' || e.key === '=') {
+      const stage = getStageRect();
+      zoomViewerAt(1.25, stage.width / 2, stage.height / 2);
+    } else if (e.key === '-') {
+      const stage = getStageRect();
+      zoomViewerAt(1 / 1.25, stage.width / 2, stage.height / 2);
+    }
+  });
 
   // Events
   algorithmSelect.addEventListener('change', () => {
