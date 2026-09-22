@@ -219,6 +219,31 @@
     .batch-status.done { color: var(--success); }
     .batch-status.error { color: var(--primary); }
     .batch-status.processing { color: var(--accent); }
+    .batch-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .batch-icon-btn {
+      width: 28px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.72rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .batch-icon-btn:active:not(:disabled) { transform: scale(0.94); }
+    .batch-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .batch-icon-btn.danger { color: #ff8a9b; border-color: rgba(233, 69, 96, 0.35); }
+    .batch-icon-btn.danger:active:not(:disabled) { background: rgba(233, 69, 96, 0.12); }
     .batch-preview-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -399,6 +424,7 @@
       cursor: pointer;
     }
     .viewer-btn:active { transform: scale(0.96); }
+    .viewer-btn-download { background: #3d5a80; border-color: #4a6a94; color: #fff; }
     .viewer-zoom-label {
       min-width: 52px;
       text-align: center;
@@ -574,6 +600,7 @@
       <button class="viewer-btn" id="viewerZoomIn" type="button">+</button>
       <button class="viewer-btn" id="viewerZoomFit" type="button">适应</button>
       <span class="viewer-toolbar-index" id="viewerToolbarIndex">—</span>
+      <button class="viewer-btn viewer-btn-download" id="viewerDownload" type="button">下载</button>
       <button class="viewer-btn" id="viewerToggle" type="button" style="display:none">原图</button>
     </div>
   </div>
@@ -1047,6 +1074,9 @@
 
   function refreshItemPreview(item) {
     if (!item.ui) return;
+    if (item.ui.downloadBtn) {
+      item.ui.downloadBtn.disabled = !item.hasResult || batchState.isBusy;
+    }
     drawPreview(item.ui.originCanvas, item.ui.originCtx, item.ui.originPlaceholder, item.originalImageData);
     item.ui.originThumb.classList.add('clickable');
     if (item.hasResult) {
@@ -1081,6 +1111,10 @@
         <span class="batch-name" title="${safeName}">${safeName}</span>
         <span class="batch-dim">${item.width}×${item.height}</span>
         <span class="batch-status">待处理</span>
+        <div class="batch-item-actions">
+          <button type="button" class="batch-icon-btn" data-action="download" title="下载当前结果" disabled aria-label="下载">⬇️</button>
+          <button type="button" class="batch-icon-btn danger" data-action="remove" title="从列表移除" aria-label="删除">🗑️</button>
+        </div>
       </div>
       <div class="batch-preview-row">
         <div class="batch-thumb">
@@ -1096,9 +1130,20 @@
       </div>
     `;
     const thumbs = el.querySelectorAll('.batch-thumb');
+    const downloadBtn = el.querySelector('[data-action="download"]');
+    const removeBtn = el.querySelector('[data-action="remove"]');
+    downloadBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      downloadSingleItem(item);
+    });
+    removeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      removeBatchItem(item);
+    });
     item.ui = {
       root: el,
       statusEl: el.querySelector('.batch-status'),
+      downloadBtn,
       originThumb: thumbs[0],
       originCanvas: thumbs[0].querySelector('canvas'),
       originCtx: thumbs[0].querySelector('canvas').getContext('2d'),
@@ -1134,6 +1179,16 @@
     $('btnClear').disabled = disabled;
     $('btnRerender').disabled = disabled || !hasLastAction;
     $('btnDownload').disabled = disabled || !hasResult;
+
+    batchState.items.forEach(item => {
+      if (item.ui?.downloadBtn) {
+        item.ui.downloadBtn.disabled = !item.hasResult || batchState.isBusy;
+      }
+      if (item.ui?.root) {
+        const removeBtn = item.ui.root.querySelector('[data-action="remove"]');
+        if (removeBtn) removeBtn.disabled = batchState.isBusy;
+      }
+    });
 
     $('infoBar').style.display = hasItems ? 'block' : 'none';
     if (hasItems) {
@@ -1300,18 +1355,67 @@
     showToast('全部重渲染完成');
   }
 
-  function downloadItem(item, index, total) {
-    workCanvas.width = item.workImageData.width;
-    workCanvas.height = item.workImageData.height;
-    workCtx.putImageData(item.workImageData, 0, 0);
+  function triggerImageDownload(imageData, baseFileName, options = {}) {
+    const { typeLabel = '', batchIndex = null, batchTotal = 1 } = options;
+    workCanvas.width = imageData.width;
+    workCanvas.height = imageData.height;
+    workCtx.putImageData(imageData, 0, 0);
     const link = document.createElement('a');
     const algoName = Algorithms[algorithmSelect.value].name.replace(/\s+/g, '_');
-    const suffix = total > 1 ? `_${String(index + 1).padStart(2, '0')}` : '';
-    link.download = `${item.fileName}_${algoName}${suffix}.jpg`;
+    const batchSuffix = batchTotal > 1 && batchIndex != null
+      ? `_${String(batchIndex + 1).padStart(2, '0')}`
+      : '';
+    const labelPart = typeLabel ? `_${typeLabel}` : '';
+    link.download = `${baseFileName}${labelPart}_${algoName}${batchSuffix}.jpg`;
     link.href = workCanvas.toDataURL('image/jpeg', 0.95);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  function downloadItem(item, index, total) {
+    triggerImageDownload(item.workImageData, item.fileName, {
+      typeLabel: '结果',
+      batchIndex: index,
+      batchTotal: total
+    });
+  }
+
+  function downloadSingleItem(item) {
+    if (!item.hasResult) {
+      showToast('请先混淆或反混淆');
+      return;
+    }
+    if (batchState.isBusy) return;
+    downloadItem(item, 0, 1);
+    showToast('已开始下载');
+  }
+
+  function downloadViewerCurrent() {
+    const item = viewerState.item;
+    if (!item) return;
+    const type = viewerState.type;
+    const imageData = getViewerImageData(item, type);
+    if (!imageData) {
+      showToast('暂无图片');
+      return;
+    }
+    const typeLabel = type === 'origin' ? '原图' : '结果';
+    triggerImageDownload(imageData, item.fileName, { typeLabel });
+    showToast('已开始下载');
+  }
+
+  function removeBatchItem(item) {
+    const idx = batchState.items.findIndex(i => i.id === item.id);
+    if (idx === -1) return;
+    if (viewerState.item?.id === item.id) {
+      closeViewer();
+    }
+    batchState.items.splice(idx, 1);
+    item.ui?.root?.remove();
+    updateBatchUI();
+    batchState.items.forEach(refreshItemPreview);
+    showToast('已从列表移除');
   }
 
   function downloadAll() {
@@ -1615,6 +1719,7 @@
   });
   $('viewerZoomFit').addEventListener('click', fitViewerTransform);
   $('viewerToggle').addEventListener('click', toggleViewerType);
+  $('viewerDownload').addEventListener('click', downloadViewerCurrent);
   $('viewerPrev').addEventListener('click', e => {
     e.stopPropagation();
     navigateViewer(-1);
