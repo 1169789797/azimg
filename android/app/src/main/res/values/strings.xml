@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">阿Z混淆</string>
+    <string name="saved_to_gallery">已保存到相册</string>
+    <string name="save_failed">保存失败</string>
+    <string name="permission_needed">需要存储权限才能保存图片</string>
+</resources>

@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="icon" type="image/png" href="ico.png">
+  <link rel="apple-touch-icon" href="ico.png">
+  <title>阿Z混淆</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #252540;
+      --border: #2e2e4a;
+      --primary: #e94560;
+      --accent: #ff6b8a;
+      --text: #eeeef5;
+      --text-dim: #8888aa;
+      --success: #4ecdc4;
+      --radius: 14px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: calc(24px + var(--safe-bottom));
+    }
+
+    .header {
+      padding: 16px 20px 10px;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 700; }
+    .header p { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+    .controls {
+      padding: 0 16px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .control-row { display: flex; gap: 8px; width: 100%; }
+    .select-wrap, .input-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    label.field-label {
+      flex: 0 0 84px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 0;
+      padding-left: 2px;
+      text-align: right;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    select, input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      width: auto;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.875rem;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    select:focus, input[type="text"]:focus { border-color: var(--primary); }
+
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+      font-size: 0.75rem;
+    }
+
+    .upload-zone {
+      margin: 0 16px 10px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(233, 69, 96, 0.05);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .upload-text { font-size: 0.85rem; color: var(--text-dim); }
+    .upload-hint { font-size: 0.7rem; color: var(--text-dim); margin-top: 3px; opacity: 0.7; }
+
+    /* 操作按钮区 */
+    .action-bar {
+      margin: 0 16px 12px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .action-bar .btn-row2 {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 11px 8px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-encrypt { background: var(--primary); color: #fff; }
+    .btn-decrypt { background: var(--success); color: #0f0f1a; }
+    .btn-restore { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
+    .btn-download { background: #3d5a80; color: #fff; font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
+
+    /* 批量列表 */
+    .batch-section { padding: 0 16px; }
+    .batch-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .batch-list {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      max-height: min(420px, 55vh);
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .batch-empty {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 24px 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .batch-item {
+      flex: 0 0 auto;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .batch-item-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+      min-width: 0;
+    }
+    .batch-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .batch-dim { color: var(--text-dim); flex-shrink: 0; }
+    .batch-status {
+      flex-shrink: 0;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text-dim);
+    }
+    .batch-status.done { color: var(--success); }
+    .batch-status.error { color: var(--primary); }
+    .batch-status.processing { color: var(--accent); }
+    .batch-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .batch-icon-btn {
+      width: 28px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.72rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .batch-icon-btn:active:not(:disabled) { transform: scale(0.94); }
+    .batch-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .batch-icon-btn.danger { color: #ff8a9b; border-color: rgba(233, 69, 96, 0.35); }
+    .batch-icon-btn.danger:active:not(:disabled) { background: rgba(233, 69, 96, 0.12); }
+    .batch-preview-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 6px;
+      align-items: start;
+    }
+    .batch-thumb {
+      background: repeating-conic-gradient(#1e1e30 0% 25%, #181828 0% 50%) 0 0 / 8px 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(var(--preview-max, 100px) + 10px);
+      min-width: 0;
+      padding: 6px 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .batch-thumb.clickable {
+      cursor: pointer;
+      transition: outline-color 0.15s;
+    }
+    .batch-thumb.clickable:active { opacity: 0.85; }
+    .batch-thumb-label {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      background: rgba(15,15,26,0.75);
+      padding: 1px 4px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    canvas.preview-canvas {
+      display: block;
+      border-radius: 3px;
+      image-rendering: auto;
+      max-width: 100%;
+      max-height: var(--preview-max, 100px);
+      width: auto;
+      height: auto;
+    }
+    .thumb-placeholder {
+      color: var(--text-dim);
+      font-size: 0.62rem;
+      text-align: center;
+      padding: 8px 4px;
+      line-height: 1.4;
+    }
+
+    .info-bar {
+      margin: 10px 16px 0;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .info-bar strong { color: var(--text); }
+
+    .loading {
+      position: fixed; inset: 0;
+      background: rgba(15,15,26,0.85);
+      z-index: 200;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .loading.show { opacity: 1; pointer-events: auto; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; top: 16px; left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 9px 18px; border-radius: 10px; font-size: 0.8rem;
+      z-index: 300; transition: transform 0.3s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      max-width: 90%; text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* 全屏图片预览 */
+    .viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      background: rgba(8, 8, 14, 0.96);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .viewer.show { opacity: 1; pointer-events: auto; }
+    .viewer-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .viewer-type {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      padding: 2px 8px;
+      background: var(--surface2);
+      border-radius: 6px;
+    }
+    .viewer-close {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .viewer-stage {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      touch-action: none;
+      position: relative;
+    }
+    .viewer-canvas-wrap {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .viewer-canvas-wrap canvas {
+      display: block;
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .viewer-toolbar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-btn {
+      min-width: 40px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .viewer-btn:active { transform: scale(0.96); }
+    .viewer-btn-download { background: #3d5a80; border-color: #4a6a94; color: #fff; }
+    .viewer-zoom-label {
+      min-width: 52px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .viewer-toolbar-index {
+      min-width: 56px;
+      padding: 0 10px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .viewer-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      background: rgba(15,15,26,0.8);
+      padding: 4px 10px;
+      border-radius: 8px;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .viewer-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 42px;
+      height: 60px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(26, 26, 46, 0.88);
+      color: var(--text);
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      pointer-events: auto;
+    }
+    .viewer-nav:active:not(:disabled) { transform: translateY(-50%) scale(0.96); }
+    .viewer-nav:disabled { opacity: 0.25; cursor: not-allowed; }
+    .viewer-nav-prev { left: 10px; }
+    .viewer-nav-next { right: 10px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>阿Z混淆</h1>
+      <p>纯前端处理，图片不会上传到服务器</p>
+    </header>
+
+    <div class="controls">
+      <div class="control-row">
+        <div class="select-wrap">
+          <label class="field-label">混淆算法</label>
+          <select id="algorithm">
+            <optgroup label="常用">
+              <option value="tomato">小番茄算法</option>
+              <option value="default">默认混淆算法</option>
+              <option value="ybzj">Ybzj算法</option>
+            </optgroup>
+            <optgroup label="PicEncrypt">
+              <option value="pic_row">PicEncrypt 行模式</option>
+              <option value="pic_rowcol">PicEncrypt 行+列模式</option>
+              <option value="pic_block">PicEncrypt 块混淆</option>
+              <option value="pic_line">PicEncrypt 行像素混淆</option>
+              <option value="pic_pixel">PicEncrypt 逐像素混淆</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="control-row" id="keyRow">
+        <div class="input-wrap">
+          <label class="field-label" id="keyLabel">密钥</label>
+          <input type="text" id="keyInput" placeholder="输入密钥">
+        </div>
+      </div>
+      <div class="control-row">
+        <div class="select-wrap">
+          <label class="field-label">缩略图尺寸</label>
+          <select id="previewSize">
+            <option value="60">60 px</option>
+            <option value="80">80 px</option>
+            <option value="100" selected>100 px</option>
+            <option value="120">120 px</option>
+            <option value="150">150 px</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" multiple="multiple">
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-text">点击上传图片（支持多选）</div>
+      <div class="upload-hint">手机请选「从相册选择」，再勾选多张；支持 JPG / PNG / WebP</div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="btn btn-encrypt" id="btnEncrypt" disabled>🔒 全部混淆</button>
+      <button class="btn btn-decrypt" id="btnDecrypt" disabled>🔓 全部反混淆</button>
+      <button class="btn btn-restore" id="btnRestore" disabled>↩️ 全部还原</button>
+      <div class="btn-row2">
+        <button class="btn btn-secondary" id="btnRerender" disabled>🔄 全部重渲染</button>
+        <button class="btn btn-download" id="btnDownload" disabled>⬇️ 批量下载</button>
+      </div>
+    </div>
+
+    <section class="batch-section">
+      <div class="batch-toolbar">
+        <span id="batchCount">共 0 张</span>
+        <button class="btn btn-secondary btn-sm" id="btnClear" disabled>清空列表</button>
+      </div>
+      <div class="batch-list" id="batchList" style="display:none"></div>
+      <div class="batch-empty" id="batchEmpty">上传后在此显示缩略图列表，点击缩略图可全屏预览</div>
+    </section>
+
+    <div class="info-bar" id="infoBar" style="display:none">
+      <span id="infoText"></span>
+    </div>
+    <div class="info-bar" id="tomatoTips" style="display:none; border-color: #4a3a2e; background: #1f1a14;">
+      <strong style="color:#e9c46a">小番茄提示：</strong>
+      反混淆宽高必须与混淆时一致；JPG 压缩或缩放会导致噪点/色差。
+      密钥默认 <strong>0</strong>（黄金比例）。下载请用 PNG。
+    </div>
+  </div>
+
+  <!-- 隐藏的全分辨率工作画布 -->
+  <canvas id="workCanvas" style="display:none"></canvas>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">处理中...</div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <!-- 全屏图片预览 -->
+  <div class="viewer" id="imageViewer" aria-hidden="true">
+    <div class="viewer-header">
+      <span class="viewer-title" id="viewerTitle">—</span>
+      <span class="viewer-type" id="viewerType">结果</span>
+      <button class="viewer-close" id="viewerClose" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="viewer-stage" id="viewerStage">
+      <div class="viewer-canvas-wrap" id="viewerWrap">
+        <canvas id="viewerCanvas"></canvas>
+      </div>
+      <div class="viewer-hint">双指捏合 / 滚轮缩放 · 拖动平移 · ← → 切换</div>
+      <button class="viewer-nav viewer-nav-prev" id="viewerPrev" type="button" aria-label="上一张">‹</button>
+      <button class="viewer-nav viewer-nav-next" id="viewerNext" type="button" aria-label="下一张">›</button>
+    </div>
+    <div class="viewer-toolbar">
+      <button class="viewer-btn" id="viewerZoomOut" type="button">−</button>
+      <span class="viewer-zoom-label" id="viewerZoomLevel">100%</span>
+      <button class="viewer-btn" id="viewerZoomIn" type="button">+</button>
+      <button class="viewer-btn" id="viewerZoomFit" type="button">适应</button>
+      <span class="viewer-toolbar-index" id="viewerToolbarIndex">—</span>
+      <button class="viewer-btn viewer-btn-download" id="viewerDownload" type="button">下载</button>
+      <button class="viewer-btn" id="viewerToggle" type="button" style="display:none">原图</button>
+    </div>
+  </div>
+
+  <script>
+  // ==================== 算法核心 ====================
+
+  const md5 = (function () {
+    function rotateLeft(lValue, iShiftBits) {
+      return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+    }
+    function addUnsigned(lX, lY) {
+      const lX4 = lX & 0x40000000, lY4 = lY & 0x40000000;
+      const lX8 = lX & 0x80000000, lY8 = lY & 0x80000000;
+      const lResult = (lX & 0x3fffffff) + (lY & 0x3fffffff);
+      if (lX4 & lY4) return lResult ^ 0x80000000 ^ lX8 ^ lY8;
+      if (lX4 | lY4) {
+        return lResult & 0x40000000 ? lResult ^ 0xc0000000 ^ lX8 ^ lY8 : lResult ^ 0x40000000 ^ lX8 ^ lY8;
+      }
+      return lResult ^ lX8 ^ lY8;
+    }
+    const F = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned((b & c) | (~b & d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const G = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned((b & d) | (c & ~d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const H = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned(b ^ c ^ d, x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    const I = (a, b, c, d, x, s, ac) => {
+      a = addUnsigned(a, addUnsigned(addUnsigned(c ^ (b | ~d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    };
+    return function (str) {
+      const x = (() => {
+        const lWordCount = Math.floor((str.length + 64) / 64);
+        const lMessage = new Array(lWordCount * 16).fill(0);
+        for (let i = 0; i < str.length; i++) {
+          lMessage[i >> 2] |= (str.charCodeAt(i) & 0xff) << ((i % 4) * 8);
+        }
+        lMessage[str.length >> 2] |= 0x80 << ((str.length % 4) * 8);
+        lMessage[lWordCount * 16 - 2] = str.length * 8;
+        return lMessage;
+      })();
+      let a = 0x67452301, b = 0xefcdab89, c = 0x98badcfe, d = 0x10325476;
+      for (let k = 0; k < x.length; k += 16) {
+        const AA = a, BB = b, CC = c, DD = d;
+        a = F(a,b,c,d,x[k+0],7,0xd76aa478); d = F(d,a,b,c,x[k+1],12,0xe8c7b756);
+        c = F(c,d,a,b,x[k+2],17,0x242070db); b = F(b,c,d,a,x[k+3],22,0xc1bdceee);
+        a = F(a,b,c,d,x[k+4],7,0xf57c0faf); d = F(d,a,b,c,x[k+5],12,0x4787c62a);
+        c = F(c,d,a,b,x[k+6],17,0xa8304613); b = F(b,c,d,a,x[k+7],22,0xfd469501);
+        a = F(a,b,c,d,x[k+8],7,0x698098d8); d = F(d,a,b,c,x[k+9],12,0x8b44f7af);
+        c = F(c,d,a,b,x[k+10],17,0xffff5bb1); b = F(b,c,d,a,x[k+11],22,0x895cd7be);
+        a = F(a,b,c,d,x[k+12],7,0x6b901122); d = F(d,a,b,c,x[k+13],12,0xfd987193);
+        c = F(c,d,a,b,x[k+14],17,0xa679438e); b = F(b,c,d,a,x[k+15],22,0x49b40821);
+        a = G(a,b,c,d,x[k+1],5,0xf61e2562); d = G(d,a,b,c,x[k+6],9,0xc040b340);
+        c = G(c,d,a,b,x[k+11],14,0x265e5a51); b = G(b,c,d,a,x[k+0],20,0xe9b6c7aa);
+        a = G(a,b,c,d,x[k+5],5,0xd62f105d); d = G(d,a,b,c,x[k+10],9,0x02441453);
+        c = G(c,d,a,b,x[k+15],14,0xd8a1e681); b = G(b,c,d,a,x[k+4],20,0xe7d3fbc8);
+        a = G(a,b,c,d,x[k+9],5,0x21e1cde6); d = G(d,a,b,c,x[k+14],9,0xc33707d6);
+        c = G(c,d,a,b,x[k+3],14,0xf4d50d87); b = G(b,c,d,a,x[k+8],20,0x455a14ed);
+        a = G(a,b,c,d,x[k+13],5,0xa9e3e905); d = G(d,a,b,c,x[k+2],9,0xfcefa3f8);
+        c = G(c,d,a,b,x[k+7],14,0x676f02d9); b = G(b,c,d,a,x[k+12],20,0x8d2a4c8a);
+        a = H(a,b,c,d,x[k+5],4,0xfffa3942); d = H(d,a,b,c,x[k+8],11,0x8771f681);
+        c = H(c,d,a,b,x[k+11],16,0x6d9d6122); b = H(b,c,d,a,x[k+14],23,0xfde5380c);
+        a = H(a,b,c,d,x[k+1],4,0xa4beea44); d = H(d,a,b,c,x[k+4],11,0x4bdecfa9);
+        c = H(c,d,a,b,x[k+7],16,0xf6bb4b60); b = H(b,c,d,a,x[k+10],23,0xbebfbc70);
+        a = H(a,b,c,d,x[k+13],4,0x289b7ec6); d = H(d,a,b,c,x[k+0],11,0xeaa127fa);
+        c = H(c,d,a,b,x[k+3],16,0xd4ef3085); b = H(b,c,d,a,x[k+6],23,0x04881d05);
+        a = H(a,b,c,d,x[k+9],4,0xd9d4d039); d = H(d,a,b,c,x[k+12],11,0xe6db99e5);
+        c = H(c,d,a,b,x[k+15],16,0x1fa27cf8); b = H(b,c,d,a,x[k+2],23,0xc4ac5665);
+        a = I(a,b,c,d,x[k+0],6,0xf4292244); d = I(d,a,b,c,x[k+7],10,0x432aff97);
+        c = I(c,d,a,b,x[k+14],15,0xab9423a7); b = I(b,c,d,a,x[k+5],21,0xfc93a039);
+        a = I(a,b,c,d,x[k+12],6,0x655b59c3); d = I(d,a,b,c,x[k+3],10,0x8f0ccc92);
+        c = I(c,d,a,b,x[k+10],15,0xffeff47d); b = I(b,c,d,a,x[k+1],21,0x85845dd1);
+        a = I(a,b,c,d,x[k+8],6,0x6fa87e4f); d = I(d,a,b,c,x[k+15],10,0xfe2ce6e0);
+        c = I(c,d,a,b,x[k+6],15,0xa3014314); b = I(b,c,d,a,x[k+13],21,0x4e0811a1);
+        a = I(a,b,c,d,x[k+4],6,0xf7537e82); d = I(d,a,b,c,x[k+11],10,0xbd3af235);
+        c = I(c,d,a,b,x[k+2],15,0x2ad7d2bb); b = I(b,c,d,a,x[k+9],21,0xeb86d391);
+        a = addUnsigned(a, AA); b = addUnsigned(b, BB);
+        c = addUnsigned(c, CC); d = addUnsigned(d, DD);
+      }
+      return [a, b, c, d].flatMap(v =>
+        [0, 1, 2, 3].map(i => ((v >>> (i * 8)) & 0xff).toString(16).padStart(2, '0'))
+      ).join('');
+    };
+  })();
+
+  function amess(length, key) {
+    return Array.from({ length }, (_, i) => i)
+      .map(i => `${key}${i}`)
+      .map(s => md5(s))
+      .map(h => h.substr(0, 7))
+      .map(h => parseInt(h, 16))
+      .map((v, i) => v % (i + 1))
+      .map((v, i) => [v, i])
+      .reduce((arr, [v, i]) => ([arr[v], arr[i]] = [arr[i], arr[v]], arr),
+        Array.from({ length }, (_, i) => i));
+  }
+
+  function logistic(key, height, width) {
+    const perms = Array(height);
+    let x = key;
+    for (let i = 0; i < height; i++) {
+      const vals = Array(width);
+      vals[0] = [x, 0];
+      for (let j = 1; j < width; j++) {
+        x = 3.9999999 * x * (1 - x);
+        vals[j] = [x, j];
+      }
+      perms[i] = vals.sort((a, b) => a[0] - b[0]).map(p => p[1]);
+    }
+    return perms;
+  }
+
+  function gilbert2d(width, height) {
+    const result = [];
+    const stack = [];
+    if (width >= height) {
+      stack.push({ x: 0, y: 0, ax: width, ay: 0, bx: 0, by: height });
+    } else {
+      stack.push({ x: 0, y: 0, ax: 0, ay: height, bx: width, by: 0 });
+    }
+    while (stack.length > 0) {
+      const { x, y, ax, ay, bx, by } = stack.pop();
+      const w = Math.abs(ax + ay), h = Math.abs(bx + by);
+      const [dax, day] = [Math.sign(ax), Math.sign(ay)];
+      const [dbx, dby] = [Math.sign(bx), Math.sign(by)];
+      if (h === 1) {
+        let px = x, py = y;
+        for (let i = 0; i < w; i++) { result.push([px, py]); px += dax; py += day; }
+        continue;
+      }
+      if (w === 1) {
+        let px = x, py = y;
+        for (let i = 0; i < h; i++) { result.push([px, py]); px += dbx; py += dby; }
+        continue;
+      }
+      let ax2 = Math.floor(ax / 2), ay2 = Math.floor(ay / 2);
+      let bx2 = Math.floor(bx / 2), by2 = Math.floor(by / 2);
+      if (2 * w > 3 * h) {
+        if (Math.abs(ax2 + ay2) % 2 && w > 2) { ax2 += dax; ay2 += day; }
+        stack.push({ x: x + ax2, y: y + ay2, ax: ax - ax2, ay: ay - ay2, bx, by });
+        stack.push({ x, y, ax: ax2, ay: ay2, bx, by });
+      } else {
+        if (Math.abs(bx2 + by2) % 2 && h > 2) { bx2 += dbx; by2 += dby; }
+        stack.push({ x: x + (ax - dax) + (bx2 - dbx), y: y + (ay - day) + (by2 - dby), ax: -bx2, ay: -by2, bx: -(ax - ax2), by: -(ay - ay2) });
+        stack.push({ x: x + bx2, y: y + by2, ax, ay, bx: bx - bx2, by: by - by2 });
+        stack.push({ x, y, ax: bx2, ay: by2, bx: ax2, by: ay2 });
+      }
+    }
+    return result;
+  }
+
+  const BLOCK_SIZE = 32;
+
+  function parseLogisticKey(key) {
+    const k = parseFloat(String(key ?? '').trim());
+    if (!isNaN(k) && k > 0 && k < 1) return k;
+    return 0.666;
+  }
+
+  function padToBlock32(imageData, block = BLOCK_SIZE) {
+    const { width, height, data } = imageData;
+    const nw = width + (block - width % block) % block;
+    const nh = height + (block - height % block) % block;
+    if (nw === width && nh === height) return imageData;
+    const out = new Uint8ClampedArray(nw * nh * 4);
+    for (let y = 0; y < nh; y++) {
+      for (let x = 0; x < nw; x++) {
+        const di = (y * nw + x) * 4;
+        if (x < width && y < height) {
+          const si = (y * width + x) * 4;
+          out[di] = data[si];
+          out[di + 1] = data[si + 1];
+          out[di + 2] = data[si + 2];
+          out[di + 3] = data[si + 3];
+        } else {
+          out[di] = 0; out[di + 1] = 0; out[di + 2] = 0; out[di + 3] = 255;
+        }
+      }
+    }
+    return new ImageData(out, nw, nh);
+  }
+
+  function transformPixels(data, width, height, core, encrypt) {
+    const result = new Uint8ClampedArray(data.length);
+    for (let j = 0; j < height; j++) {
+      for (let i = 0; i < width; i++) {
+        let [src, dst] = core(i, j);
+        if (!encrypt) [src, dst] = [dst, src];
+        const s = src * 4, d = dst * 4;
+        result[d] = data[s];
+        result[d + 1] = data[s + 1];
+        result[d + 2] = data[s + 2];
+        result[d + 3] = data[s + 3];
+      }
+    }
+    return result;
+  }
+
+  /** 小番茄偏移量：有密钥时用 key/1.618，留空时用黄金比例（兼容官网工具） */
+  function tomatoOffset(pixelCount, key) {
+    const trimmed = String(key ?? '').trim();
+    if (trimmed !== '') {
+      const k = parseFloat(trimmed);
+      if (!isNaN(k) && k > 0) {
+        return Math.round(pixelCount * k / 1.618) % pixelCount;
+      }
+      // 密钥为 0 或无效时回退黄金比例
+    }
+    return Math.round(pixelCount * (Math.sqrt(5) - 1) / 2);
+  }
+
+  /** 小番茄标准实现：按 Gilbert 曲线序号遍历（与 xiaofanqie / PicEncrypt 一致） */
+  function tomatoTransform(data, width, height, key, encrypt) {
+    const pixelCount = width * height;
+    const curve = gilbert2d(width, height);
+    const offset = tomatoOffset(pixelCount, key);
+    const result = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < pixelCount; i++) {
+      const [oldX, oldY] = curve[i];
+      const newIdx = (i + offset) % pixelCount;
+      const [newX, newY] = curve[newIdx];
+      let srcIdx, dstIdx;
+      if (encrypt) {
+        srcIdx = 4 * (oldX + oldY * width);
+        dstIdx = 4 * (newX + newY * width);
+      } else {
+        dstIdx = 4 * (oldX + oldY * width);
+        srcIdx = 4 * (newX + newY * width);
+      }
+      result[dstIdx] = data[srcIdx];
+      result[dstIdx + 1] = data[srcIdx + 1];
+      result[dstIdx + 2] = data[srcIdx + 2];
+      result[dstIdx + 3] = data[srcIdx + 3];
+    }
+    return result;
+  }
+
+  const Algorithms = {
+    default: {
+      name: '默认混淆算法',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        const y = amess(height, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          const c = (y[b % height] + j) % height;
+          const d = y[c];
+          return [i + j * width, b + d * width];
+        }, encrypt);
+      }
+    },
+    tomato: {
+      name: '小番茄算法',
+      needsKey: true, defaultKey: '0', keyHint: '0 ~ 1.618',
+      transform: tomatoTransform
+    },
+    ybzj: {
+      name: 'Ybzj算法',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseLogisticKey(key);
+        const col = logistic(k, height, width);
+        const row = logistic(k, width, height);
+        return transformPixels(data, width, height, (i, j) => {
+          const n = row[i][j];
+          const m = col[n][i];
+          return [i + j * width, m + n * width];
+        }, encrypt);
+      }
+    },
+    pic_row: {
+      name: 'PicEncrypt 行模式',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseLogisticKey(key);
+        const address = logistic(k, 1, width)[0];
+        return transformPixels(data, width, height, (i, j) => {
+          const m = address[i];
+          return [i + j * width, m + j * width];
+        }, encrypt);
+      }
+    },
+    pic_rowcol: {
+      name: 'PicEncrypt 行+列模式',
+      needsKey: true, defaultKey: '0.666', keyHint: '0 ~ 1 之间的小数',
+      transform(data, width, height, key, encrypt) {
+        const k = parseLogisticKey(key);
+        const col = logistic(k, height, width);
+        const row = logistic(k, width, height);
+        return transformPixels(data, width, height, (i, j) => {
+          const n = row[i][j];
+          const m = col[n][i];
+          return [i + j * width, m + n * width];
+        }, encrypt);
+      }
+    },
+    pic_block: {
+      name: 'PicEncrypt 块混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      needsBlockPad: true,
+      transform(data, width, height, key, encrypt) {
+        const sx = BLOCK_SIZE, sy = BLOCK_SIZE;
+        const x = amess(sx, key);
+        const y = amess(sy, key);
+        const ssx = width / sx;
+        const ssy = height / sy;
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[((j / ssy) | 0) % sx] * ssx + i) % width;
+          const b = x[(a / ssx) | 0] * ssx + a % ssx;
+          const c = (y[((b / ssx) | 0) % sy] * ssy + j) % height;
+          const d = y[(c / ssy) | 0] * ssy + c % ssy;
+          return [i + j * width, b + d * width];
+        }, encrypt);
+      }
+    },
+    pic_line: {
+      name: 'PicEncrypt 行像素混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          return [i + j * width, b + j * width];
+        }, encrypt);
+      }
+    },
+    pic_pixel: {
+      name: 'PicEncrypt 逐像素混淆',
+      needsKey: true, defaultKey: '', keyHint: '任意字符串',
+      transform(data, width, height, key, encrypt) {
+        const x = amess(width, key);
+        const y = amess(height, key);
+        return transformPixels(data, width, height, (i, j) => {
+          const a = (x[j % width] + i) % width;
+          const b = x[a];
+          const c = (y[b % height] + j) % height;
+          const d = y[c];
+          return [i + j * width, b + d * width];
+        }, encrypt);
+      }
+    }
+  };
+
+  // ==================== 应用逻辑 ====================
+
+  const MAX_PIXELS = 8_000_000;
+  const MAX_SIDE = 4000;
+  const DOWNLOAD_GAP_MS = 450;
+
+  let itemIdCounter = 0;
+  const batchState = { items: [], isBusy: false };
+
+  const $ = id => document.getElementById(id);
+  const workCanvas = $('workCanvas');
+  const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+  const algorithmSelect = $('algorithm');
+  const keyInput = $('keyInput');
+  const previewSizeSelect = $('previewSize');
+  const batchList = $('batchList');
+  const batchEmpty = $('batchEmpty');
+
+  const _scratch = document.createElement('canvas');
+  const _scratchCtx = _scratch.getContext('2d');
+
+  function showToast(msg, duration = 2500) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function showLoading(show, text = '处理中...') {
+    $('loadingText').textContent = text;
+    $('loading').classList.toggle('show', show);
+  }
+
+  function getPreviewMax() {
+    return parseInt(previewSizeSelect.value, 10) || 100;
+  }
+
+  function syncPreviewThumbCss() {
+    document.documentElement.style.setProperty('--preview-max', getPreviewMax() + 'px');
+  }
+
+  function updateKeyUI() {
+    const algo = Algorithms[algorithmSelect.value];
+    $('tomatoTips').style.display = algorithmSelect.value === 'tomato' ? 'block' : 'none';
+    const keyRow = $('keyRow');
+    if (algo.needsKey) {
+      keyRow.style.display = '';
+      $('keyLabel').textContent = '密钥';
+      if (!keyInput.dataset.touched) keyInput.value = algo.defaultKey;
+      keyInput.disabled = false;
+      keyInput.placeholder = algo.keyHint;
+    } else {
+      keyRow.style.display = 'none';
+    }
+  }
+
+  function scaleImage(img) {
+    let { width, height } = img;
+    if (width > MAX_SIDE || height > MAX_SIDE) {
+      const ratio = Math.min(MAX_SIDE / width, MAX_SIDE / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    if (width * height > MAX_PIXELS) {
+      const ratio = Math.sqrt(MAX_PIXELS / (width * height));
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    return { width, height };
+  }
+
+  function copyImageData(data) {
+    return new ImageData(new Uint8ClampedArray(data.data), data.width, data.height);
+  }
+
+  function imageDataFromImg(img) {
+    const { width, height } = scaleImage(img);
+    workCanvas.width = width;
+    workCanvas.height = height;
+    workCtx.clearRect(0, 0, width, height);
+    workCtx.drawImage(img, 0, 0, width, height);
+    return {
+      imageData: workCtx.getImageData(0, 0, width, height),
+      width,
+      height
+    };
+  }
+
+  function drawPreview(previewCanvas, previewCtx, placeholderEl, imageData) {
+    if (!imageData) {
+      previewCanvas.style.display = 'none';
+      placeholderEl.style.display = 'block';
+      return;
+    }
+    const maxSize = getPreviewMax();
+    const { width, height } = imageData;
+    const ratio = Math.min(maxSize / width, maxSize / height, 1);
+    const pw = Math.max(1, Math.round(width * ratio));
+    const ph = Math.max(1, Math.round(height * ratio));
+
+    _scratch.width = width;
+    _scratch.height = height;
+    _scratchCtx.putImageData(imageData, 0, 0);
+
+    previewCanvas.width = pw;
+    previewCanvas.height = ph;
+    previewCtx.clearRect(0, 0, pw, ph);
+    previewCtx.drawImage(_scratch, 0, 0, pw, ph);
+    previewCanvas.style.display = 'block';
+    previewCanvas.style.width = '';
+    previewCanvas.style.height = '';
+    placeholderEl.style.display = 'none';
+  }
+
+  function setItemStatus(item, status, text) {
+    item.status = status;
+    if (item.ui?.statusEl) {
+      item.ui.statusEl.textContent = text;
+      item.ui.statusEl.className = 'batch-status' + (status === 'done' ? ' done' : status === 'error' ? ' error' : status === 'processing' ? ' processing' : '');
+    }
+  }
+
+  function refreshItemPreview(item) {
+    if (!item.ui) return;
+    if (item.ui.downloadBtn) {
+      item.ui.downloadBtn.disabled = !item.hasResult || batchState.isBusy;
+    }
+    drawPreview(item.ui.originCanvas, item.ui.originCtx, item.ui.originPlaceholder, item.originalImageData);
+    item.ui.originThumb.classList.add('clickable');
+    if (item.hasResult) {
+      drawPreview(item.ui.resultCanvas, item.ui.resultCtx, item.ui.resultPlaceholder, item.workImageData);
+      item.ui.resultThumb.classList.add('clickable');
+    } else {
+      item.ui.resultCanvas.style.display = 'none';
+      item.ui.resultPlaceholder.style.display = 'block';
+      item.ui.resultPlaceholder.textContent = '待处理';
+      item.ui.resultThumb.classList.remove('clickable');
+    }
+  }
+
+  function refreshAllPreviews() {
+    syncPreviewThumbCss();
+    batchState.items.forEach(refreshItemPreview);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function createBatchItemEl(item) {
+    const safeName = escapeHtml(item.fileName);
+    const el = document.createElement('div');
+    el.className = 'batch-item';
+    el.dataset.id = item.id;
+    el.innerHTML = `
+      <div class="batch-item-head">
+        <span class="batch-name" title="${safeName}">${safeName}</span>
+        <span class="batch-dim">${item.width}×${item.height}</span>
+        <span class="batch-status">待处理</span>
+        <div class="batch-item-actions">
+          <button type="button" class="batch-icon-btn" data-action="download" title="下载当前结果" disabled aria-label="下载">⬇️</button>
+          <button type="button" class="batch-icon-btn danger" data-action="remove" title="从列表移除" aria-label="删除">🗑️</button>
+        </div>
+      </div>
+      <div class="batch-preview-row">
+        <div class="batch-thumb">
+          <span class="batch-thumb-label">原图</span>
+          <canvas class="preview-canvas"></canvas>
+          <div class="thumb-placeholder">—</div>
+        </div>
+        <div class="batch-thumb">
+          <span class="batch-thumb-label">结果</span>
+          <canvas class="preview-canvas"></canvas>
+          <div class="thumb-placeholder">待处理</div>
+        </div>
+      </div>
+    `;
+    const thumbs = el.querySelectorAll('.batch-thumb');
+    const downloadBtn = el.querySelector('[data-action="download"]');
+    const removeBtn = el.querySelector('[data-action="remove"]');
+    downloadBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      downloadSingleItem(item);
+    });
+    removeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      removeBatchItem(item);
+    });
+    item.ui = {
+      root: el,
+      statusEl: el.querySelector('.batch-status'),
+      downloadBtn,
+      originThumb: thumbs[0],
+      originCanvas: thumbs[0].querySelector('canvas'),
+      originCtx: thumbs[0].querySelector('canvas').getContext('2d'),
+      originPlaceholder: thumbs[0].querySelector('.thumb-placeholder'),
+      resultThumb: thumbs[1],
+      resultCanvas: thumbs[1].querySelector('canvas'),
+      resultCtx: thumbs[1].querySelector('canvas').getContext('2d'),
+      resultPlaceholder: thumbs[1].querySelector('.thumb-placeholder')
+    };
+    thumbs[0].addEventListener('click', () => openViewer(item, 'origin'));
+    thumbs[1].addEventListener('click', () => {
+      if (item.hasResult) openViewer(item, 'result');
+      else showToast('请先混淆或反混淆');
+    });
+    refreshItemPreview(item);
+    return el;
+  }
+
+  function updateBatchUI() {
+    const count = batchState.items.length;
+    const hasItems = count > 0;
+    const hasResult = batchState.items.some(i => i.hasResult);
+    const hasLastAction = batchState.items.some(i => i.lastAction);
+
+    $('batchCount').textContent = `共 ${count} 张`;
+    batchList.style.display = hasItems ? 'flex' : 'none';
+    batchEmpty.style.display = hasItems ? 'none' : 'block';
+
+    const disabled = !hasItems || batchState.isBusy;
+    $('btnEncrypt').disabled = disabled;
+    $('btnDecrypt').disabled = disabled;
+    $('btnRestore').disabled = disabled;
+    $('btnClear').disabled = disabled;
+    $('btnRerender').disabled = disabled || !hasLastAction;
+    $('btnDownload').disabled = disabled || !hasResult;
+
+    batchState.items.forEach(item => {
+      if (item.ui?.downloadBtn) {
+        item.ui.downloadBtn.disabled = !item.hasResult || batchState.isBusy;
+      }
+      if (item.ui?.root) {
+        const removeBtn = item.ui.root.querySelector('[data-action="remove"]');
+        if (removeBtn) removeBtn.disabled = batchState.isBusy;
+      }
+    });
+
+    $('infoBar').style.display = hasItems ? 'block' : 'none';
+    if (hasItems) {
+      const done = batchState.items.filter(i => i.hasResult).length;
+      $('infoText').innerHTML = `已加载 <strong>${count}</strong> 张，已完成 <strong>${done}</strong> 张；点击缩略图可全屏预览`;
+    }
+  }
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function createItemRecord(img, file) {
+    const { imageData, width, height } = imageDataFromImg(img);
+    const original = copyImageData(imageData);
+    return {
+      id: 'item_' + (++itemIdCounter),
+      fileName: (file.name || 'image').replace(/\.[^.]+$/, ''),
+      width,
+      height,
+      originalImageData: original,
+      workImageData: copyImageData(original),
+      lastAction: null,
+      hasResult: false,
+      status: 'ready',
+      ui: null
+    };
+  }
+
+  async function handleFiles(fileList) {
+    const files = [...fileList].filter(f => f && f.type.startsWith('image/'));
+    if (!files.length) {
+      showToast('请选择有效的图片文件');
+      return;
+    }
+
+    showLoading(true, `加载 0/${files.length}...`);
+    let loaded = 0;
+    let failed = 0;
+
+    for (const file of files) {
+      try {
+        const img = await loadImage(file);
+        const item = createItemRecord(img, file);
+        batchState.items.push(item);
+        batchList.appendChild(createBatchItemEl(item));
+        loaded++;
+      } catch {
+        failed++;
+      }
+      showLoading(true, `加载 ${loaded + failed}/${files.length}...`);
+    }
+
+    showLoading(false);
+    updateBatchUI();
+
+    if (loaded) showToast(`已加载 ${loaded} 张${failed ? `，${failed} 张失败` : ''}`);
+    else showToast('图片加载失败');
+  }
+
+  function transformItemData(item, encrypt) {
+    const algo = Algorithms[algorithmSelect.value];
+    const key = algo.needsKey ? keyInput.value : '';
+    let imageData = item.workImageData;
+    if (algo.needsBlockPad) {
+      imageData = padToBlock32(imageData);
+    }
+    const { data, width, height } = imageData;
+    const result = algo.transform(data, width, height, key, encrypt);
+    return new ImageData(result, width, height);
+  }
+
+  async function processItem(item, encrypt) {
+    setItemStatus(item, 'processing', encrypt ? '混淆中' : '反混淆中');
+    await new Promise(r => setTimeout(r, 0));
+    try {
+      item.workImageData = transformItemData(item, encrypt);
+      item.lastAction = encrypt ? 'encrypt' : 'decrypt';
+      item.hasResult = true;
+      setItemStatus(item, 'done', encrypt ? '已混淆' : '已反混淆');
+      refreshItemPreview(item);
+    } catch (e) {
+      setItemStatus(item, 'error', '失败');
+      throw e;
+    }
+  }
+
+  async function processAll(encrypt) {
+    if (!batchState.items.length) {
+      showToast('请先上传图片');
+      return;
+    }
+    batchState.isBusy = true;
+    updateBatchUI();
+
+    const total = batchState.items.length;
+    let ok = 0;
+    let fail = 0;
+
+    for (let i = 0; i < total; i++) {
+      const item = batchState.items[i];
+      showLoading(true, `${encrypt ? '混淆' : '反混淆'} ${i + 1}/${total}：${item.fileName}`);
+      try {
+        await processItem(item, encrypt);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    batchState.isBusy = false;
+    showLoading(false);
+    updateBatchUI();
+    showToast(`${encrypt ? '混淆' : '反混淆'}完成：成功 ${ok} 张${fail ? `，失败 ${fail} 张` : ''}`);
+  }
+
+  function restoreAll() {
+    if (!batchState.items.length) {
+      showToast('请先上传图片');
+      return;
+    }
+    batchState.items.forEach(item => {
+      item.workImageData = copyImageData(item.originalImageData);
+      item.lastAction = null;
+      item.hasResult = false;
+      setItemStatus(item, 'ready', '待处理');
+      refreshItemPreview(item);
+    });
+    updateBatchUI();
+    showToast('已全部还原为原图');
+  }
+
+  async function rerenderAll() {
+    const items = batchState.items.filter(i => i.lastAction);
+    if (!items.length) {
+      showToast('请先执行混淆或反混淆');
+      return;
+    }
+    batchState.isBusy = true;
+    updateBatchUI();
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      showLoading(true, `重渲染 ${i + 1}/${items.length}：${item.fileName}`);
+      item.workImageData = copyImageData(item.originalImageData);
+      try {
+        await processItem(item, item.lastAction === 'encrypt');
+      } catch { /* status already set */ }
+    }
+
+    batchState.isBusy = false;
+    showLoading(false);
+    updateBatchUI();
+    showToast('全部重渲染完成');
+  }
+
+  /** Android WebView：分块写入相册，避免 data: URL 过大导致闪退 */
+  function saveDataUrlViaAndroid(dataUrl, fileName) {
+    if (!window.AndroidBridge || typeof AndroidBridge.beginSave !== 'function') return false;
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) return false;
+    const meta = dataUrl.slice(0, comma);
+    const b64 = dataUrl.slice(comma + 1);
+    let mime = 'image/jpeg';
+    if (meta.indexOf('image/png') !== -1) mime = 'image/png';
+    else if (meta.indexOf('image/webp') !== -1) mime = 'image/webp';
+    if (!AndroidBridge.beginSave(fileName, mime)) return false;
+    const CHUNK = 256 * 1024;
+    try {
+      for (let i = 0; i < b64.length; i += CHUNK) {
+        if (!AndroidBridge.appendChunk(b64.slice(i, i + CHUNK))) {
+          if (typeof AndroidBridge.cancelSave === 'function') AndroidBridge.cancelSave();
+          return false;
+        }
+      }
+      return !!AndroidBridge.endSave();
+    } catch (err) {
+      if (typeof AndroidBridge.cancelSave === 'function') AndroidBridge.cancelSave();
+      return false;
+    }
+  }
+
+  function triggerImageDownload(imageData, baseFileName, options = {}) {
+    const { typeLabel = '', batchIndex = null, batchTotal = 1 } = options;
+    workCanvas.width = imageData.width;
+    workCanvas.height = imageData.height;
+    workCtx.putImageData(imageData, 0, 0);
+    const algoName = Algorithms[algorithmSelect.value].name.replace(/\s+/g, '_');
+    const batchSuffix = batchTotal > 1 && batchIndex != null
+      ? `_${String(batchIndex + 1).padStart(2, '0')}`
+      : '';
+    const labelPart = typeLabel ? `_${typeLabel}` : '';
+    const fileName = `${baseFileName}${labelPart}_${algoName}${batchSuffix}.jpg`;
+    const dataUrl = workCanvas.toDataURL('image/jpeg', 0.95);
+
+    if (window.AndroidBridge || window.__AZ_ANDROID_APP__) {
+      const ok = saveDataUrlViaAndroid(dataUrl, fileName);
+      if (!ok) showToast('保存失败');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function downloadItem(item, index, total) {
+    triggerImageDownload(item.workImageData, item.fileName, {
+      typeLabel: '结果',
+      batchIndex: index,
+      batchTotal: total
+    });
+  }
+
+  function downloadSingleItem(item) {
+    if (!item.hasResult) {
+      showToast('请先混淆或反混淆');
+      return;
+    }
+    if (batchState.isBusy) return;
+    downloadItem(item, 0, 1);
+    showToast('已开始下载');
+  }
+
+  function downloadViewerCurrent() {
+    const item = viewerState.item;
+    if (!item) return;
+    const type = viewerState.type;
+    const imageData = getViewerImageData(item, type);
+    if (!imageData) {
+      showToast('暂无图片');
+      return;
+    }
+    const typeLabel = type === 'origin' ? '原图' : '结果';
+    triggerImageDownload(imageData, item.fileName, { typeLabel });
+    showToast('已开始下载');
+  }
+
+  function removeBatchItem(item) {
+    const idx = batchState.items.findIndex(i => i.id === item.id);
+    if (idx === -1) return;
+    if (viewerState.item?.id === item.id) {
+      closeViewer();
+    }
+    batchState.items.splice(idx, 1);
+    item.ui?.root?.remove();
+    updateBatchUI();
+    batchState.items.forEach(refreshItemPreview);
+    showToast('已从列表移除');
+  }
+
+  function downloadAll() {
+    const items = batchState.items.filter(i => i.hasResult);
+    if (!items.length) {
+      showToast('没有可下载的结果');
+      return;
+    }
+
+    batchState.isBusy = true;
+    updateBatchUI();
+    showLoading(true, `下载队列 1/${items.length}...`);
+
+    let index = 0;
+    function next() {
+      if (index >= items.length) {
+        batchState.isBusy = false;
+        showLoading(false);
+        updateBatchUI();
+        showToast(`已触发 ${items.length} 个下载（全分辨率）`);
+        return;
+      }
+      downloadItem(items[index], index, items.length);
+      index++;
+      if (index < items.length) {
+        showLoading(true, `下载队列 ${index + 1}/${items.length}...`);
+        setTimeout(next, DOWNLOAD_GAP_MS);
+      } else {
+        setTimeout(() => {
+          batchState.isBusy = false;
+          showLoading(false);
+          updateBatchUI();
+          showToast(`已触发 ${items.length} 个下载（全分辨率）`);
+        }, DOWNLOAD_GAP_MS);
+      }
+    }
+    next();
+  }
+
+  function clearBatch() {
+    if (!batchState.items.length) return;
+    closeViewer();
+    batchState.items = [];
+    batchList.innerHTML = '';
+    updateBatchUI();
+    showToast('列表已清空');
+  }
+
+  // ==================== 全屏预览 ====================
+
+  const viewerEl = $('imageViewer');
+  const viewerStage = $('viewerStage');
+  const viewerWrap = $('viewerWrap');
+  const viewerCanvas = $('viewerCanvas');
+  const viewerCtx = viewerCanvas.getContext('2d');
+
+  const viewerState = {
+    item: null,
+    type: 'result',
+    scale: 1,
+    tx: 0,
+    ty: 0,
+    imgW: 0,
+    imgH: 0,
+    dragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragOriginTx: 0,
+    dragOriginTy: 0,
+    pinchStartDist: 0,
+    pinchStartScale: 1,
+    pinchCenterX: 0,
+    pinchCenterY: 0
+  };
+
+  function getViewerImageData(item, type) {
+    return type === 'origin' ? item.originalImageData : item.workImageData;
+  }
+
+  function applyViewerTransform() {
+    viewerWrap.style.transform = `translate(${viewerState.tx}px, ${viewerState.ty}px) scale(${viewerState.scale})`;
+    $('viewerZoomLevel').textContent = Math.round(viewerState.scale * 100) + '%';
+  }
+
+  function getStageRect() {
+    return viewerStage.getBoundingClientRect();
+  }
+
+  function fitViewerTransform() {
+    const stage = getStageRect();
+    const pad = 32;
+    const availW = Math.max(stage.width - pad * 2, 1);
+    const availH = Math.max(stage.height - pad * 2, 1);
+    const scale = Math.min(availW / viewerState.imgW, availH / viewerState.imgH, 1);
+    viewerState.scale = Math.max(scale, 0.05);
+    viewerState.tx = (stage.width - viewerState.imgW * viewerState.scale) / 2;
+    viewerState.ty = (stage.height - viewerState.imgH * viewerState.scale) / 2;
+    applyViewerTransform();
+  }
+
+  function scheduleFitViewer() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(fitViewerTransform);
+    });
+  }
+
+  function drawViewerImage(imageData) {
+    viewerState.imgW = imageData.width;
+    viewerState.imgH = imageData.height;
+    viewerCanvas.width = imageData.width;
+    viewerCanvas.height = imageData.height;
+    viewerCtx.putImageData(imageData, 0, 0);
+    viewerState.scale = 1;
+    viewerState.tx = 0;
+    viewerState.ty = 0;
+    applyViewerTransform();
+    scheduleFitViewer();
+  }
+
+  function zoomViewerAt(factor, cx, cy) {
+    const prev = viewerState.scale;
+    const next = Math.min(Math.max(prev * factor, 0.05), 12);
+    if (next === prev) return;
+    const ratio = next / prev;
+    viewerState.tx = cx - (cx - viewerState.tx) * ratio;
+    viewerState.ty = cy - (cy - viewerState.ty) * ratio;
+    viewerState.scale = next;
+    applyViewerTransform();
+  }
+
+  function getViewerNavItems() {
+    if (viewerState.type === 'result') {
+      return batchState.items.filter(i => i.hasResult);
+    }
+    return batchState.items;
+  }
+
+  function getViewerNavIndex() {
+    const navItems = getViewerNavItems();
+    return navItems.findIndex(i => i.id === viewerState.item?.id);
+  }
+
+  function setViewerIndexText(text) {
+    $('viewerToolbarIndex').textContent = text;
+  }
+
+  function updateViewerNavButtons() {
+    const navItems = getViewerNavItems();
+    const idx = getViewerNavIndex();
+    const total = navItems.length;
+    const prevBtn = $('viewerPrev');
+    const nextBtn = $('viewerNext');
+
+    if (total <= 1) {
+      setViewerIndexText(total === 1 ? '1/1' : '—');
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      return;
+    }
+
+    prevBtn.style.display = '';
+    nextBtn.style.display = '';
+    setViewerIndexText(`${idx + 1}/${total}`);
+    prevBtn.disabled = idx <= 0;
+    nextBtn.disabled = idx >= total - 1;
+  }
+
+  function navigateViewer(direction) {
+    const navItems = getViewerNavItems();
+    const idx = getViewerNavIndex();
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= navItems.length) return;
+
+    const item = navItems[nextIdx];
+    viewerState.item = item;
+    updateViewerMeta();
+    drawViewerImage(getViewerImageData(item, viewerState.type));
+  }
+
+  function updateViewerMeta() {
+    const item = viewerState.item;
+    if (!item) return;
+    const isOrigin = viewerState.type === 'origin';
+    $('viewerTitle').textContent = item.fileName;
+    $('viewerType').textContent = isOrigin ? '原图' : '结果';
+    $('viewerToggle').style.display = item.hasResult ? '' : 'none';
+    $('viewerToggle').textContent = isOrigin ? '看结果' : '看原图';
+    updateViewerNavButtons();
+  }
+
+  function openViewer(item, type) {
+    const imageData = getViewerImageData(item, type);
+    if (!imageData) {
+      showToast('暂无预览');
+      return;
+    }
+    viewerState.item = item;
+    viewerState.type = type;
+    viewerEl.classList.add('show');
+    viewerEl.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    updateViewerMeta();
+    drawViewerImage(imageData);
+  }
+
+  function closeViewer() {
+    viewerEl.classList.remove('show');
+    viewerEl.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    viewerState.item = null;
+    viewerState.dragging = false;
+    viewerState.pinchStartDist = 0;
+  }
+
+  function toggleViewerType() {
+    const item = viewerState.item;
+    if (!item || !item.hasResult) return;
+    viewerState.type = viewerState.type === 'origin' ? 'result' : 'origin';
+    updateViewerMeta();
+    drawViewerImage(getViewerImageData(item, viewerState.type));
+  }
+
+  function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  viewerStage.addEventListener('wheel', e => {
+    if (!viewerState.item) return;
+    e.preventDefault();
+    const stage = getStageRect();
+    const cx = e.clientX - stage.left;
+    const cy = e.clientY - stage.top;
+    zoomViewerAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, cx, cy);
+  }, { passive: false });
+
+  viewerStage.addEventListener('pointerdown', e => {
+    if (!viewerState.item || e.button !== 0) return;
+    if (e.target.closest('.viewer-nav')) return;
+    viewerState.dragging = true;
+    viewerState.dragStartX = e.clientX;
+    viewerState.dragStartY = e.clientY;
+    viewerState.dragOriginTx = viewerState.tx;
+    viewerState.dragOriginTy = viewerState.ty;
+    viewerStage.setPointerCapture(e.pointerId);
+  });
+
+  viewerStage.addEventListener('pointermove', e => {
+    if (!viewerState.dragging) return;
+    viewerState.tx = viewerState.dragOriginTx + (e.clientX - viewerState.dragStartX);
+    viewerState.ty = viewerState.dragOriginTy + (e.clientY - viewerState.dragStartY);
+    applyViewerTransform();
+  });
+
+  function endViewerDrag(e) {
+    if (!viewerState.dragging) return;
+    viewerState.dragging = false;
+    try { viewerStage.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+  }
+  viewerStage.addEventListener('pointerup', endViewerDrag);
+  viewerStage.addEventListener('pointercancel', endViewerDrag);
+
+  viewerStage.addEventListener('touchstart', e => {
+    if (!viewerState.item || e.touches.length !== 2) return;
+    viewerState.pinchStartDist = getTouchDistance(e.touches);
+    viewerState.pinchStartScale = viewerState.scale;
+    const stage = getStageRect();
+    viewerState.pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - stage.left;
+    viewerState.pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - stage.top;
+  }, { passive: true });
+
+  viewerStage.addEventListener('touchmove', e => {
+    if (!viewerState.item || e.touches.length !== 2 || !viewerState.pinchStartDist) return;
+    e.preventDefault();
+    const dist = getTouchDistance(e.touches);
+    const next = Math.min(Math.max(viewerState.pinchStartScale * (dist / viewerState.pinchStartDist), 0.05), 12);
+    const ratio = next / viewerState.scale;
+    const cx = viewerState.pinchCenterX;
+    const cy = viewerState.pinchCenterY;
+    viewerState.tx = cx - (cx - viewerState.tx) * ratio;
+    viewerState.ty = cy - (cy - viewerState.ty) * ratio;
+    viewerState.scale = next;
+    applyViewerTransform();
+  }, { passive: false });
+
+  viewerStage.addEventListener('touchend', () => {
+    viewerState.pinchStartDist = 0;
+  });
+
+  $('viewerClose').addEventListener('click', closeViewer);
+  $('viewerZoomIn').addEventListener('click', () => {
+    const stage = getStageRect();
+    zoomViewerAt(1.25, stage.width / 2, stage.height / 2);
+  });
+  $('viewerZoomOut').addEventListener('click', () => {
+    const stage = getStageRect();
+    zoomViewerAt(1 / 1.25, stage.width / 2, stage.height / 2);
+  });
+  $('viewerZoomFit').addEventListener('click', fitViewerTransform);
+  $('viewerToggle').addEventListener('click', toggleViewerType);
+  $('viewerDownload').addEventListener('click', downloadViewerCurrent);
+  $('viewerPrev').addEventListener('click', e => {
+    e.stopPropagation();
+    navigateViewer(-1);
+  });
+  $('viewerNext').addEventListener('click', e => {
+    e.stopPropagation();
+    navigateViewer(1);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (!viewerState.item) return;
+    if (e.key === 'Escape') closeViewer();
+    else if (e.key === 'ArrowLeft') navigateViewer(-1);
+    else if (e.key === 'ArrowRight') navigateViewer(1);
+    else if (e.key === '+' || e.key === '=') {
+      const stage = getStageRect();
+      zoomViewerAt(1.25, stage.width / 2, stage.height / 2);
+    } else if (e.key === '-') {
+      const stage = getStageRect();
+      zoomViewerAt(1 / 1.25, stage.width / 2, stage.height / 2);
+    }
+  });
+
+  // Events
+  algorithmSelect.addEventListener('change', () => {
+    keyInput.dataset.touched = '';
+    updateKeyUI();
+  });
+  keyInput.addEventListener('input', () => { keyInput.dataset.touched = '1'; });
+  previewSizeSelect.addEventListener('change', refreshAllPreviews);
+
+  $('fileInput').addEventListener('change', e => {
+    if (e.target.files?.length) handleFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  const uploadZone = $('uploadZone');
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) handleFiles([file]);
+        break;
+      }
+    }
+  });
+
+  $('btnEncrypt').addEventListener('click', () => processAll(true));
+  $('btnDecrypt').addEventListener('click', () => processAll(false));
+  $('btnRestore').addEventListener('click', restoreAll);
+  $('btnRerender').addEventListener('click', rerenderAll);
+  $('btnDownload').addEventListener('click', downloadAll);
+  $('btnClear').addEventListener('click', clearBatch);
+
+  algorithmSelect.value = 'tomato';
+  syncPreviewThumbCss();
+  updateKeyUI();
+  updateBatchUI();
+  </script>
+</body>
+</html>
