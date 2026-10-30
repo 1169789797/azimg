@@ -11,7 +11,8 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
+    :root, [data-theme="dark"] {
+      color-scheme: dark;
       --bg: #0f0f1a;
       --surface: #1a1a2e;
       --surface2: #252540;
@@ -21,8 +22,59 @@
       --text: #eeeef5;
       --text-dim: #8888aa;
       --success: #4ecdc4;
+      --on-success: #0f0f1a;
       --radius: 14px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --checker-a: #1e1e30;
+      --checker-b: #181828;
+      --overlay-scrim: rgba(15, 15, 26, 0.85);
+      --viewer-scrim: rgba(8, 8, 14, 0.96);
+      --badge-scrim: rgba(15, 15, 26, 0.75);
+      --hint-scrim: rgba(15, 15, 26, 0.8);
+      --nav-scrim: rgba(26, 26, 46, 0.88);
+      --upload-hover: rgba(233, 69, 96, 0.05);
+      --shadow: rgba(0, 0, 0, 0.4);
+      --shadow-strong: rgba(0, 0, 0, 0.5);
+      --download-bg: #3d5a80;
+      --download-border: #4a6a94;
+      --danger-text: #ff8a9b;
+      --danger-border: rgba(233, 69, 96, 0.35);
+      --danger-active-bg: rgba(233, 69, 96, 0.12);
+      --tip-bg: #1f1a14;
+      --tip-border: #4a3a2e;
+      --tip-accent: #e9c46a;
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #f3f4f8;
+      --surface: #ffffff;
+      --surface2: #eef0f6;
+      --border: #d4d7e4;
+      --primary: #e94560;
+      --accent: #d63856;
+      --text: #1c1c28;
+      --text-dim: #6e6e8a;
+      --success: #2a9d8f;
+      --on-success: #ffffff;
+      --checker-a: #e8e9ef;
+      --checker-b: #dcdde6;
+      --overlay-scrim: rgba(243, 244, 248, 0.88);
+      --viewer-scrim: rgba(28, 28, 40, 0.92);
+      --badge-scrim: rgba(255, 255, 255, 0.85);
+      --hint-scrim: rgba(255, 255, 255, 0.9);
+      --nav-scrim: rgba(255, 255, 255, 0.92);
+      --upload-hover: rgba(233, 69, 96, 0.08);
+      --shadow: rgba(0, 0, 0, 0.12);
+      --shadow-strong: rgba(0, 0, 0, 0.2);
+      --download-bg: #3d5a80;
+      --download-border: #4a6a94;
+      --danger-text: #c92844;
+      --danger-border: rgba(233, 69, 96, 0.45);
+      --danger-active-bg: rgba(233, 69, 96, 0.1);
+      --tip-bg: #fff8eb;
+      --tip-border: #e8dcc8;
+      --tip-accent: #b8860b;
     }
 
     html, body {
@@ -40,9 +92,30 @@
 
     .header {
       padding: 16px 20px 10px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
     }
+    .header-main { flex: 1; min-width: 0; }
     .header h1 { font-size: 1.25rem; font-weight: 700; }
     .header p { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+    .theme-toggle {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle:active { transform: scale(0.96); }
 
     .controls {
       padding: 0 16px 10px;
@@ -51,6 +124,7 @@
       gap: 8px;
     }
     .control-row { display: flex; gap: 8px; width: 100%; }
+    #optionsRow.key-hidden .select-wrap { flex: 1 1 100%; }
     .select-wrap, .input-wrap {
       flex: 1;
       position: relative;
@@ -61,7 +135,7 @@
     }
 
     label.field-label {
-      flex: 0 0 84px;
+      flex: 0 0 72px;
       font-size: 0.72rem;
       color: var(--text-dim);
       margin-bottom: 0;
@@ -110,7 +184,7 @@
     }
     .upload-zone:hover, .upload-zone.drag-over {
       border-color: var(--primary);
-      background: rgba(233, 69, 96, 0.05);
+      background: var(--upload-hover);
     }
     .upload-zone input[type="file"] {
       position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
@@ -126,13 +200,6 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
-    .action-bar .btn-row2 {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
     .btn {
       padding: 11px 8px;
       border: none;
@@ -149,10 +216,10 @@
     .btn:active { transform: scale(0.97); }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .btn-encrypt { background: var(--primary); color: #fff; }
-    .btn-decrypt { background: var(--success); color: #0f0f1a; }
+    .btn-decrypt { background: var(--success); color: var(--on-success); }
     .btn-restore { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
-    .btn-download { background: #3d5a80; color: #fff; font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
+    .btn-download { background: var(--download-bg); color: #fff; font-weight: 500; font-size: 0.8rem; padding: 9px 8px; }
 
     /* 批量列表 */
     .batch-section { padding: 0 16px; }
@@ -160,9 +227,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
       margin-bottom: 8px;
       font-size: 0.75rem;
       color: var(--text-dim);
+    }
+    .batch-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      margin-left: auto;
     }
     .btn-sm {
       padding: 5px 10px;
@@ -245,8 +320,8 @@
     }
     .batch-icon-btn:active:not(:disabled) { transform: scale(0.94); }
     .batch-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .batch-icon-btn.danger { color: #ff8a9b; border-color: rgba(233, 69, 96, 0.35); }
-    .batch-icon-btn.danger:active:not(:disabled) { background: rgba(233, 69, 96, 0.12); }
+    .batch-icon-btn.danger { color: var(--danger-text); border-color: var(--danger-border); }
+    .batch-icon-btn.danger:active:not(:disabled) { background: var(--danger-active-bg); }
     .batch-preview-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -255,7 +330,7 @@
       align-items: start;
     }
     .batch-thumb {
-      background: repeating-conic-gradient(#1e1e30 0% 25%, #181828 0% 50%) 0 0 / 8px 8px;
+      background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 8px 8px;
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -277,7 +352,7 @@
       left: 6px;
       font-size: 0.58rem;
       color: var(--text-dim);
-      background: rgba(15,15,26,0.75);
+      background: var(--badge-scrim);
       padding: 1px 4px;
       border-radius: 4px;
       pointer-events: none;
@@ -310,10 +385,15 @@
       line-height: 1.5;
     }
     .info-bar strong { color: var(--text); }
+    .info-bar.tomato-tips {
+      border-color: var(--tip-border);
+      background: var(--tip-bg);
+    }
+    .info-bar.tomato-tips .tip-title { color: var(--tip-accent); }
 
     .loading {
       position: fixed; inset: 0;
-      background: rgba(15,15,26,0.85);
+      background: var(--overlay-scrim);
       z-index: 200;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 16px;
@@ -335,7 +415,7 @@
       background: var(--surface); border: 1px solid var(--border);
       padding: 9px 18px; border-radius: 10px; font-size: 0.8rem;
       z-index: 300; transition: transform 0.3s;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 20px var(--shadow);
       max-width: 90%; text-align: center;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
@@ -347,7 +427,7 @@
       z-index: 400;
       display: flex;
       flex-direction: column;
-      background: rgba(8, 8, 14, 0.96);
+      background: var(--viewer-scrim);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s;
@@ -407,7 +487,7 @@
     .viewer-canvas-wrap canvas {
       display: block;
       border-radius: 4px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 24px var(--shadow-strong);
     }
     .viewer-toolbar {
       flex-shrink: 0;
@@ -433,7 +513,7 @@
       cursor: pointer;
     }
     .viewer-btn:active { transform: scale(0.96); }
-    .viewer-btn-download { background: #3d5a80; border-color: #4a6a94; color: #fff; }
+    .viewer-btn-download { background: var(--download-bg); border-color: var(--download-border); color: #fff; }
     .viewer-zoom-label {
       min-width: 52px;
       text-align: center;
@@ -462,7 +542,7 @@
       transform: translateX(-50%);
       font-size: 0.65rem;
       color: var(--text-dim);
-      background: rgba(15,15,26,0.8);
+      background: var(--hint-scrim);
       padding: 4px 10px;
       border-radius: 8px;
       pointer-events: none;
@@ -477,7 +557,7 @@
       height: 60px;
       border: 1px solid var(--border);
       border-radius: 10px;
-      background: rgba(26, 26, 46, 0.88);
+      background: var(--nav-scrim);
       color: var(--text);
       font-size: 1.75rem;
       line-height: 1;
@@ -494,12 +574,24 @@
     .viewer-nav-prev { left: 10px; }
     .viewer-nav-next { right: 10px; }
   </style>
+  <script>
+  (function () {
+    var t = localStorage.getItem('az-img-theme');
+    if (t !== 'light' && t !== 'dark') t = 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', t === 'light' ? '#f3f4f8' : '#1a1a2e');
+  })();
+  </script>
 </head>
 <body>
   <div class="app">
     <header class="header">
-      <h1>阿Z混淆</h1>
-      <p>纯前端处理，图片不会上传到服务器</p>
+      <div class="header-main">
+        <h1>阿Z混淆</h1>
+        <p>纯前端处理，图片不会上传到服务器</p>
+      </div>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="切换到日间模式">☀️</button>
     </header>
 
     <div class="controls">
@@ -522,13 +614,11 @@
           </select>
         </div>
       </div>
-      <div class="control-row" id="keyRow">
-        <div class="input-wrap">
+      <div class="control-row" id="optionsRow">
+        <div class="input-wrap" id="keyRow">
           <label class="field-label" id="keyLabel">密钥</label>
           <input type="text" id="keyInput" placeholder="输入密钥">
         </div>
-      </div>
-      <div class="control-row">
         <div class="select-wrap">
           <label class="field-label">缩略图尺寸</label>
           <select id="previewSize">
@@ -546,24 +636,24 @@
       <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" multiple="multiple">
       <div class="upload-icon">🖼️</div>
       <div class="upload-text">点击上传图片（支持多选）</div>
-      <div class="upload-hint">手机请选「从相册选择」，再勾选多张；支持 JPG / PNG / WebP</div>
+      <div class="upload-hint">手机请选「从相册选择」，再勾选多张</div>
     </div>
 
     <!-- 操作按钮 -->
     <div class="action-bar">
-      <button class="btn btn-encrypt" id="btnEncrypt" disabled>🔒 全部混淆</button>
-      <button class="btn btn-decrypt" id="btnDecrypt" disabled>🔓 全部反混淆</button>
-      <button class="btn btn-restore" id="btnRestore" disabled>↩️ 全部还原</button>
-      <div class="btn-row2">
-        <button class="btn btn-secondary" id="btnRerender" disabled>🔄 全部重渲染</button>
-        <button class="btn btn-download" id="btnDownload" disabled>⬇️ 批量下载</button>
-      </div>
+      <button class="btn btn-encrypt" id="btnEncrypt" disabled>混淆</button>
+      <button class="btn btn-decrypt" id="btnDecrypt" disabled>解混</button>
+      <button class="btn btn-restore" id="btnRestore" disabled>还原</button>
     </div>
 
     <section class="batch-section">
       <div class="batch-toolbar">
         <span id="batchCount">共 0 张</span>
-        <button class="btn btn-secondary btn-sm" id="btnClear" disabled>清空列表</button>
+        <div class="batch-toolbar-actions">
+          <button class="btn btn-secondary btn-sm" id="btnRerender" disabled>刷新</button>
+          <button class="btn btn-download btn-sm" id="btnDownload" disabled>批量下载</button>
+          <button class="btn btn-secondary btn-sm" id="btnClear" disabled>清空列表</button>
+        </div>
       </div>
       <div class="batch-list" id="batchList" style="display:none"></div>
       <div class="batch-empty" id="batchEmpty">上传后在此显示缩略图列表，点击缩略图可全屏预览</div>
@@ -572,8 +662,8 @@
     <div class="info-bar" id="infoBar" style="display:none">
       <span id="infoText"></span>
     </div>
-    <div class="info-bar" id="tomatoTips" style="display:none; border-color: #4a3a2e; background: #1f1a14;">
-      <strong style="color:#e9c46a">小番茄提示：</strong>
+    <div class="info-bar tomato-tips" id="tomatoTips" style="display:none">
+      <strong class="tip-title">小番茄提示：</strong>
       反混淆宽高必须与混淆时一致；JPG 压缩或缩放会导致噪点/色差。
       密钥默认 <strong>0</strong>（黄金比例）。下载请用 PNG。
     </div>
@@ -965,6 +1055,36 @@
 
   // ==================== 应用逻辑 ====================
 
+  const THEME_KEY = 'az-img-theme';
+  const THEME_META = { dark: '#1a1a2e', light: '#f3f4f8' };
+
+  function applyTheme(theme) {
+    const t = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(THEME_KEY, t);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', THEME_META[t]);
+    const btn = $('themeToggle');
+    if (btn) {
+      btn.textContent = t === 'light' ? '🌙' : '☀️';
+      btn.setAttribute('aria-label', t === 'light' ? '切换到夜间模式' : '切换到日间模式');
+    }
+    const appleBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleBar) appleBar.setAttribute('content', t === 'light' ? 'default' : 'black-translucent');
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    applyTheme(saved === 'light' ? 'light' : 'dark');
+    const toggle = $('themeToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'light' ? 'dark' : 'light');
+      });
+    }
+  }
+
   const MAX_PIXELS = 8_000_000;
   const MAX_SIDE = 4000;
   const DOWNLOAD_GAP_MS = 450;
@@ -1008,14 +1128,17 @@
     const algo = Algorithms[algorithmSelect.value];
     $('tomatoTips').style.display = algorithmSelect.value === 'tomato' ? 'block' : 'none';
     const keyRow = $('keyRow');
+    const optionsRow = $('optionsRow');
     if (algo.needsKey) {
       keyRow.style.display = '';
+      optionsRow?.classList.remove('key-hidden');
       $('keyLabel').textContent = '密钥';
       if (!keyInput.dataset.touched) keyInput.value = algo.defaultKey;
       keyInput.disabled = false;
       keyInput.placeholder = algo.keyHint;
     } else {
       keyRow.style.display = 'none';
+      optionsRow?.classList.add('key-hidden');
     }
   }
 
@@ -1798,6 +1921,7 @@
   $('btnDownload').addEventListener('click', downloadAll);
   $('btnClear').addEventListener('click', clearBatch);
 
+  initTheme();
   algorithmSelect.value = 'tomato';
   syncPreviewThumbCss();
   updateKeyUI();
