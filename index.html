@@ -89,6 +89,15 @@
       margin: 0 auto;
       padding-bottom: calc(24px + var(--safe-bottom));
     }
+    .app-footer {
+      padding: 12px 20px 4px;
+      text-align: center;
+    }
+    .app-version {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      opacity: 0.8;
+    }
 
     .header {
       padding: 16px 20px 10px;
@@ -667,6 +676,9 @@
       反混淆宽高必须与混淆时一致；JPG 压缩或缩放会导致噪点/色差。
       密钥默认 <strong>0</strong>（黄金比例）。下载请用 PNG。
     </div>
+    <footer class="app-footer">
+      <span class="app-version" id="appVersion" title="versionName · Android versionCode">—</span>
+    </footer>
   </div>
 
   <!-- 隐藏的全分辨率工作画布 -->
@@ -1071,6 +1083,17 @@
     }
     const appleBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (appleBar) appleBar.setAttribute('content', t === 'light' ? 'default' : 'black-translucent');
+  }
+
+  function loadAppVersion() {
+    fetch('version.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => {
+        const el = document.getElementById('appVersion');
+        if (!el || !v) return;
+        el.textContent = `v${v.versionName} (${v.versionCode})`;
+      })
+      .catch(() => {});
   }
 
   function initTheme() {
@@ -1922,6 +1945,7 @@
   $('btnClear').addEventListener('click', clearBatch);
 
   initTheme();
+  loadAppVersion();
   algorithmSelect.value = 'tomato';
   syncPreviewThumbCss();
   updateKeyUI();

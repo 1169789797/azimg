@@ -38,7 +38,7 @@ npx --yes serve pwa -p 5173
 - `<link rel="manifest" …>` 等 PWA meta
 - 文末 `serviceWorker.register('./sw.js')` 注册逻辑
 
-改完静态资源后，如需强制刷新缓存，把 `sw.js` 里的 `CACHE_NAME` 版本号加一（例如 `az-img-pwa-v1` → `v2`）。
+发版时在仓库根目录运行 `..\scripts\bump-version.ps1` 或 `sync-version.ps1`，会自动更新本目录 `version.json` 与 `sw.js` 的 `CACHE_NAME`（与 `VERSION_CODE` 对齐）。
 
 ## 说明
 

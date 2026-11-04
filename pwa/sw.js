@@ -1,11 +1,12 @@
 /* 图片混淆工具 PWA Service Worker */
-const CACHE_NAME = 'az-img-pwa-v1';
+const CACHE_NAME = 'az-img-pwa-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './version.json'
 ];
 
 self.addEventListener('install', (event) => {

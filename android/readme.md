@@ -70,6 +70,19 @@ app/src/main/assets/www/index.html
 
 图标可继续使用同目录下的 `ico.png`（体积宜小，勿用超大原图）。
 
+## 版本号
+
+与仓库根目录 **[../version.properties](../version.properties)** 同步，构建时写入 APK：
+
+| 属性 | Android 字段 | 说明 |
+|------|----------------|------|
+| `VERSION_NAME` | `versionName` | 设置里显示的版本名，如 `1.1.0` |
+| `VERSION_CODE` | `versionCode` | **整数**，每次对外发新包必须递增 |
+
+发版流程见根目录 [VERSION.md](../VERSION.md)。改版本后执行 `..\scripts\sync-version.ps1`（或 `bump-version.ps1`），再 `gradlew.bat assembleRelease`。
+
+WebView 页脚会加载 `assets/www/version.json` 显示与 APK 一致的版本。
+
 ## 说明
 
 - 当前为 **WebView 壳**，不是算法的纯 Kotlin 重写；后续若换 Capacitor 等方案可另开目录。

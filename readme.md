@@ -44,8 +44,29 @@ gradlew.bat assembleDebug
 1. `pwa/index.html`（保留 PWA 的 manifest / Service Worker 相关片段）
 2. `android/app/src/main/assets/www/index.html`
 
+## 版本号与发版
+
+**唯一来源：** 根目录 [version.properties](version.properties)（说明见 [VERSION.md](VERSION.md)）。
+
+| 字段 | 作用 |
+|------|------|
+| `VERSION_NAME` | 用户看到的版本，如 `1.1.0`（网页页脚、Android「版本名称」） |
+| `VERSION_CODE` | 整数，**每发新 APK 必须 +1**（Android「版本号」/ 商店内部版本） |
+
+发新版建议：
+
+```powershell
+.\scripts\bump-version.ps1 patch   # 或 minor / major
+```
+
+会同步 `version.json` 到根目录、`pwa/`、Android 内嵌 www，并更新 PWA 离线缓存名。记得维护 [CHANGELOG.md](CHANGELOG.md)。
+
+Android 构建时 [build.gradle.kts](android/app/build.gradle.kts) 自动读取 `version.properties`，无需在 Gradle 里重复填写。
+
 ## 相关文档
 
 - [小番茄算法规则](doc/小番茄算法.md)
 - [PWA 说明](pwa/readme.md)
 - [Android 说明](android/readme.md)
+- [版本号说明](VERSION.md)
+- [更新日志](CHANGELOG.md)
